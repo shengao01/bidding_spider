@@ -1,3 +1,4 @@
+# coding: utf-8
 import requests
 import csv
 import codecs
@@ -54,29 +55,34 @@ class GuoDianSpider(BaseSpider):
                               "http://www.cgdcbidding.com/gggc/index_{}.jhtml",
                               "http://www.cgdcbidding.com/ggjg/index_{}.jhtml"]
         self.filename = 'guodian_list.csv'
+        self.map_dict = {0: "货物", 1: "工程", 2: "服务"}
         f = codecs.open(self.filename, 'w', 'utf_8_sig')
         writer = csv.writer(f)
-        writer.writerow(['标题', '开始时间', '结束时间', '链接'])
+        writer.writerow(['来源', '标题', '开始时间', '结束时间', '链接'])
         f.close()
 
-    def get_url_list(self):
-        url_list = []
+    def get_total(self):
+        total_list = []
         for url in self.url_temp_list:
             detail_html_str = self.parse_url(url.strip("_{}"))
             detail_html = etree.HTML(detail_html_str)
             total_str = detail_html.xpath('//div[@class="pagination"]/div/text()')[0]
             total_num = int(re.findall(r'1/(.*)?页', total_str)[0])
-            print(total_num)
-            url_list.extend([url.format(i) for i in range(1, total_num+1)])
-        return url_list
+            total_list.append(total_num)
+            # total_list.extend([url.format(i) for i in range(1, total_num+1)])
+        print(total_list)
+        # total_list = [2, 2, 2]
+        # print(total_list)
+        return total_list
 
-    def get_content_list(self, detail_url):
+    def get_content(self, detail_url, num):
         if detail_url is not None:
             detail_html_str = self.parse_url(detail_url)
             detail_html = etree.HTML(detail_html_str)
             content_list = detail_html.xpath('//div[@class="listbox"]//li')
             for li in content_list:
                 item={}
+                item["src"] = self.map_dict[num]
                 item["title"] = li.xpath("./a/@title")[0]
                 item["start_date"] = li.xpath('./a//input/@value')[0]
                 item["end_date"] = li.xpath('./a//input/@value')[1]
@@ -86,11 +92,15 @@ class GuoDianSpider(BaseSpider):
                 self.write_file(cont_str, self.filename)
 
     def run(self):
-        url_list = self.get_url_list()
-        for url in url_list:
-            print("enter parse url: " + url)
-            self.get_content_list(url)
-            time.sleep(0.1)
+        total_list = self.get_total()
+        for i, total in enumerate(total_list):
+            j = 1
+            while j < total+1:
+                url = self.url_temp_list[i].format(j)
+                print(url)
+                self.get_content(url, i)
+                j += 1
+                time.sleep(0.1)
 
 
 class GuoNengSpider(BaseSpider):
@@ -312,7 +322,7 @@ class ShenHuaSpider(BaseSpider):
                 item = {}
                 item["src"] = self.map_dict[num]
                 item["title"] = cont.xpath(".//a/@title")[0]
-                item["num"] = cont.xpath(".//a/span/text()")[0] if cont.xpath(".//a/span/text()") else ""
+                item["num"] = cont.xpath(".//a/span/text()")[0] if cont.xpath(".//a/span/text()") else " "
                 # item["state"] = cont.xpath("./td[1]/span/text()")[0]
                 item["date"] = cont.xpath("./span/text()")[0].strip()
                 href_str = cont.xpath(".//a[1]/@href")[0]
@@ -391,7 +401,7 @@ class ZhaoCaiSpider(BaseSpider):
                 print(url)
                 self.get_content(url, i)
                 j += 1
-                time.sleep(1)
+                time.sleep(0.1)
 
 
 if __name__ == '__main__':
@@ -401,30 +411,35 @@ if __name__ == '__main__':
     except:
         print("guodian run error...")
         traceback.print_exc()
+
     try:
         guoneng=GuoNengSpider()
         guoneng.run()
     except:
         print("guoneng run error...")
         traceback.print_exc()
+
     try:
         huadian=HuaDianSpider()
         huadian.run()
     except:
         print("huadian run error...")
         traceback.print_exc()
+
     try:
         huaneng=HuaNengSpider()
         huaneng.run()
     except:
         print("huaneng run error...")
         traceback.print_exc()
+
     try:
         shenhua=ShenHuaSpider()
         shenhua.run()
     except:
         print("shenhua run error...")
         traceback.print_exc()
+
     # try:
     #     zhaocai=ZhaoCaiSpider()
     #     zhaocai.run()
