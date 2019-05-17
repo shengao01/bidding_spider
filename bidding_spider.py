@@ -1,4 +1,8 @@
 # coding: utf-8
+import logging
+import os
+import pymysql
+pymysql.install_as_MySQLdb()
 import requests
 import csv
 import codecs
@@ -11,7 +15,7 @@ from lxml import etree
 from sendmail import send_mail
 
 
-key_words_list = ['安全', '工控', '主机', '加固', '信息', '监控', '防护', '信息安全', '电子监控', '安全防护', '安全改造', '安全加固', '网络安全', '安全生产', '安全审计', '威胁检测', '防护优化', '工控信息', '电力监控', '防火墙', '安防系统']
+key_words_list = ['安全', '工控', '主机', '等保', '加固', '信息', '监控', '防护', '信息安全', '电子监控', '安全防护', '安全改造', '安全加固', '网络安全', '安全生产', '安全审计', '威胁检测', '防护优化', '工控信息', '电力监控', '防火墙', '安防系统']
 
 
 class BaseSpider(object):
@@ -22,17 +26,27 @@ class BaseSpider(object):
         self.headers = {
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36"
         }
+        self.db = DbProxy()
 
     def _parse_url(self, url):
         resp = requests.get(url, headers=self.headers, timeout=20)
         return resp.content.decode()
 
-    def parse_url(self, url):
+    def parse_url(self, url, session=""):
         try:
-            html_str = self._parse_url(url)
+            if session:
+                resp = session.get(url, headers=self.headers, timeout=20)
+                html_str = resp.content.decode()
+            else:
+                html_str = self._parse_url(url)
         except:
             html_str = None
         return html_str
+
+    def get_login_session(self, url, form_data):
+        session = requests.session()
+        session.post(url,headers=self.headers,data=form_data)
+        return session
 
     def post_url(self, url, form_data):
         try:
@@ -42,7 +56,39 @@ class BaseSpider(object):
             html_str = None
         return html_str
 
-    def write_file(self, cont_str, filename):
+    def write_db(self, cont_str):
+        if cont_str[-1] == 1:
+            title = cont_str[0]
+            start_date = cont_str[2]
+            end_date = cont_str[3]
+            href = cont_str[4]
+        elif cont_str[-1] == 2:
+            title=cont_str[0]
+            start_date=cont_str[3]
+            end_date=cont_str[4]
+            href=cont_str[5]
+        elif cont_str[-1] == 3:
+            title=cont_str[0]
+            start_date=cont_str[4]
+            end_date=""
+            href=cont_str[5]
+        elif cont_str[-1] == 4:
+            title=cont_str[0]
+            start_date=cont_str[2]
+            end_date=""
+            href=cont_str[3]
+        else:
+            title=cont_str[0]
+            start_date=cont_str[3]
+            end_date=""
+            href=cont_str[4]
+        time_now = int(time.time())
+        sql_str = "insert into bidding_list(title, src, start, end, href, tmp) values(\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\")".format(title, cont_str[-1], start_date, end_date, href, time_now)
+        print(sql_str)
+        self.db.write_db(sql_str)
+
+
+    def write_file(self, cont_str, filename, num):
         seg_list = jieba.cut(cont_str[0], cut_all=True)
         for item in seg_list:
             if len(item) > 1:
@@ -51,6 +97,8 @@ class BaseSpider(object):
                     writer = csv.writer(f)
                     print(cont_str)
                     writer.writerow(cont_str)
+                    cont_str.append(num)
+                    self.write_db(cont_str)
                     f.close()
                     break
 
@@ -106,7 +154,8 @@ class GuoDianSpider(BaseSpider):
                 item["href"] = li.xpath("./a/@href")[0]
                 cont_str = [item['title'], item['src'], item['start_date'], item['end_date'], item['href']]
                 # print(cont_str)
-                self.write_file(cont_str, self.filename)
+                self.write_file(cont_str, self.filename, 1)
+                # self.write_db(cont_str,1)
 
     def run(self):
         total_list = self.get_total()
@@ -152,7 +201,7 @@ class GuoNengSpider(BaseSpider):
                     if ts < time.time():
                         # print(row['quotDeadlineString'])
                         return True
-                self.write_file(write_list, self.filename)
+                self.write_file(write_list, self.filename, 2)
             # print(len(item_list))
             # print(item_list[0])
 
@@ -194,7 +243,10 @@ class HuaDianSpider(BaseSpider):
         f.close()
 
     def get_content_list(self, detail_url, num):
-        detail_html_str = self.parse_url(detail_url)
+        try:
+            detail_html_str = self.parse_url(detail_url)
+        except:
+            detail_html_str = ""
         # print(detail_html_str)
         detail_html = etree.HTML(detail_html_str)
         cont_list = detail_html.xpath("//table//tr")[1:-1]
@@ -220,13 +272,15 @@ class HuaDianSpider(BaseSpider):
             # print(item)
             if item["state"]:
                 write_list = [item["title"], item["src"], item["state"], item["company"], item["date"], item["href"]]
-                self.write_file(write_list, self.filename)
+                self.write_file(write_list, self.filename, 3)
 
     def get_total(self):
         total_list = []
         for url in self.url_temp:
             url = url.format(1)
+            print(url)
             detail_html_str = self.parse_url(url)
+            # print(detail_html_str)
             detail_html = etree.HTML(detail_html_str)
             total_str = detail_html.xpath('//tr/td/span[@class="page"]/text()')[3]
             total_num = int(re.findall(r"1/(.*)? 页", total_str)[0])
@@ -301,7 +355,7 @@ class HuaNengSpider(BaseSpider):
                 item["href"] = self.url_part.format(tail_url)
                 # print(item)
                 write_list = [item["title"], item["src"], item["date"], item["href"]]
-                self.write_file(write_list, self.filename)
+                self.write_file(write_list, self.filename, 4)
 
     def run(self):
         total_list = self.get_total()
@@ -374,7 +428,7 @@ class ShenHuaSpider(BaseSpider):
                 item["href"] = self.url_part + href_str
                 # print(item)
                 write_list = [item["title"], item["num"], item["src"], item["date"], item["href"]]
-                self.write_file(write_list, self.filename)
+                self.write_file(write_list, self.filename, 5)
 
     def run(self):
         total_list = self.get_total()
@@ -396,101 +450,253 @@ class ZhaoCaiSpider(BaseSpider):
     """
     def __init__(self):
         super(ZhaoCaiSpider, self).__init__()
-        self.url_temp_list = ["https://www.zbytb.com/gongcheng-{}.html",
-                              "https://www.zbytb.com/huowu-{}.html",
-                              "https://www.zbytb.com/fuwu-{}.html",
-                              "https://www.zbytb.com/dianli-{}.html",
-                              "https://www.zbytb.com/shiyou-{}.html"]
+        self.url_temp_list = ["https://www.zbytb.com/zb/search.php?page=1&kw={}".format(i) for i in key_words_list]
         self.url_part = ""
+        self.login_url = "https://www.zbytb.com/member/login.php"
+        self.form_data = {
+            "forward": "https://www.zbytb.com/member/my.php",
+            "username": "Tdhx2018",
+            "password": "123456",
+            "cookietime": 1,
+            "submit": 1,
+            "ajax": 1
+            }
         self.map_dict = {0: "工程", 1: "货物", 2: "服务", 3: "电力", 4: "石油"}
         self.filename = "zhaocai_list.csv"
         f = codecs.open(self.filename, 'w', 'utf_8_sig')
         writer = csv.writer(f)
-        writer.writerow(['来源', '地区', '名称', '开始时间', '链接'])
+        writer.writerow(['名称', '来源', '地区', '开始时间', '链接'])
         f.close()
 
-    def get_total(self):
+    def get_total(self, session):
         total_list = []
         for url in self.url_temp_list:
-            url = url.format(1)
-            detail_html_str = self.parse_url(url)
-            detail_html = etree.HTML(detail_html_str)
-            total_str = detail_html.xpath('//div[@class="pages"]//cite/text()')[0]
-            total_num = int(re.findall(r"条/(.*?)页", total_str)[0])
+            # url = url.format(1)
+            try:
+                detail_html_str = self.parse_url(url, session)
+                if detail_html_str:
+                    detail_html = etree.HTML(detail_html_str)
+                    total_str = detail_html.xpath('//div[@class="pages"]//cite/text()')[0]
+                    total_num = int(re.findall(r"条/(.*?)页", total_str)[0])
+                    time.sleep(5)
+            except:
+                total_num = 1
+            print(total_num)
             total_list.append(total_num)
         return total_list
 
-    def get_content(self, detail_url, num):
+    def get_content(self, detail_url, num, session):
         if detail_url is not None:
-            detail_html_str = self.parse_url(detail_url)
-            # print(detail_html_str)
+            detail_html_str = self.parse_url(detail_url, session)
+            print(detail_html_str)
             detail_html = etree.HTML(detail_html_str)
             cont_list = detail_html.xpath('//tr[@class="hover_tr"]')
             for cont in cont_list:
                 item = {}
                 item["src"] = self.map_dict[num]
                 item["title"] = cont.xpath("./td[2]/a/text()")[0]
-                item["area"] = cont.xpath("./td[1]/a/text()")[0]
+                item["area"] = cont.xpath("./td[1]/a/text()")[0] if cont.xpath("./td[1]/a/text()") else " "
                 # item["state"] = cont.xpath("./td[1]/span/text()")[0]
                 item["date"] = cont.xpath("./td[4]/text()")[0].strip()
                 item["href"] = cont.xpath("./td[2]/a/@href")[0].strip()
-                print(item)
-                write_list = [item["src"], item["area"], item["title"], item["date"], item["href"]]
-                self.write_file(write_list, self.filename)
+                # print(item)
+                write_list = [item["title"], item["src"], item["area"], item["date"], item["href"]]
+                self.write_file(write_list, self.filename, 6)
 
     def run(self):
-        total_list = self.get_total()
-        for i, total in enumerate(total_list):
-            j = 1
-            while j < total+1:
-                url = self.url_temp_list[i].format(j)
-                print(url)
-                self.get_content(url, i)
-                j += 1
-                time.sleep(5)
+        session=self.get_login_session(self.login_url, self.form_data)
+        total_list = self.get_total(session)
+        print(total_list)
+        # session = self.get_login_session(self.login_url,self.form_data)
+        # for i, total in enumerate(total_list):
+        #     j = 1
+        #     while j < total+1:
+        #         url = self.url_temp_list[i].format(j)
+        #         print(url)
+        #         self.get_content(url, i, session)
+        #         j += 1
+        #         time.sleep(5)
+
+
+class DbProxy(object):
+    def __init__(self):
+        self.connect_status=1
+        self.reconnect_times=0
+        self.cur=None
+        try:
+            self.conn=pymysql.connect(host='192.168.81.4', port=3306, user='root', passwd='123456', db='bidding_info')
+        except:
+            logging.error('connet mysql error')
+            logging.error(traceback.format_exc())
+            self.connect_status=0
+            return
+        self.cur=self.conn.cursor()
+
+    def __del__(self):
+        self.cur.close()
+        self.conn.close()
+        return
+
+    def check_db_errno(self, errno):
+        if errno == 29 or errno == 1146 or errno == 1194 or errno == 1030 or errno == 1102 or errno == 1712:
+            return True
+        return False
+
+    def write_db(self, sqlstr):
+        try:
+            self.cur.execute(sqlstr)
+        except pymysql.Error as e:
+            try:
+                errno=e.args[0]
+                errinfo=e.args[1]
+                logging.error("write_db error, cmd=%s,errno=[%d],errinfo=%s", sqlstr, errno, errinfo)
+            except IndexError:
+                logging.error('write_db error')
+                logging.error(traceback.format_exc())
+
+            if self.reconnect_times < 5:
+                self.reconnect_times+=1
+                res=self.reconnect()
+                # res = self.write_db(sqlstr)
+                if res == 0:
+                    self.reconnect_times=0
+                else:
+                    time.sleep(0.2)
+                return res
+            else:
+                self.reconnect_times=0
+                return 1
+        try:
+            self.conn.commit()
+        except:
+            logging.error("conn commit fail!!")
+            logging.error(traceback.format_exc())
+        return 0
+
+    def read_db(self, sqlstr):
+        try:
+            self.cur.execute(sqlstr)
+            rows=self.cur.fetchall()
+        except pymysql.Error as e:
+            try:
+                errno=e.args[0]
+                errinfo=e.args[1]
+                if self.check_db_errno(errno):
+                    logging.error("make mysql_check_error.flag")
+                logging.error("read_db error: cmd=%s,errno=[%d],errinfo=%s", sqlstr, errno, errinfo)
+            except IndexError:
+                logging.error('read_db error')
+                logging.error(traceback.format_exc())
+
+            if self.reconnect_times < 5:
+                self.reconnect_times+=1
+                self.reconnect()
+                res, rows=self.read_db(sqlstr)
+                if res == 0:
+                    self.reconnect_times=0
+                else:
+                    time.sleep(0.2)
+                return res, rows
+            else:
+                self.reconnect_times=0
+                rows=[]
+                return 1, rows
+        return 0, rows
+
+    def execute(self, sqlstr):
+        try:
+            self.cur.execute(sqlstr)
+        except pymysql.Error as e:
+            try:
+                errno=e.args[0]
+                errinfo=e.args[1]
+                if self.check_db_errno(errno):
+                    logging.error("make mysql_check_error.flag")
+                logging.error("execute error: cmd=%s,errno=[%d],errinfo=%s", sqlstr, errno, errinfo)
+            except IndexError:
+                logging.error("execute error, cmd=%s", sqlstr)
+                logging.error(traceback.format_exc())
+
+            if self.reconnect_times < 5:
+                self.reconnect_times+=1
+                self.reconnect()
+                res, self.cur=self.execute(sqlstr)
+                if res == 0:
+                    self.reconnect_times=0
+                return res, self.cur
+            else:
+                self.reconnect_times=0
+                return 1, self.cur
+        return 0, self.cur
+
+    def get_connect_status(self):
+        return self.connect_status
+
+    def reconnect(self):
+        try:
+            self.cur.close()
+            self.conn.close()
+        except:
+            logging.error(traceback.format_exc())
+        try:
+            self.conn=pymysql.connect(host='192.168.81.4', port=3306, user='root', passwd='123456',
+                                      db='bidding_info')
+        except:
+            logging.error('connet mysql error')
+            logging.error(traceback.format_exc())
+            self.connect_status=0
+            return
+        self.cur=self.conn.cursor()
+        self.connect_status=1
+        logging.info("DbProxy reconnect ok")
 
 
 if __name__ == '__main__':
-    try:
-        guodian=GuoDianSpider()
-        guodian.run()
-    except:
-        print("guodian run error...")
-        traceback.print_exc()
+    path = "./log.log"
+    # try:
+    #     guodian=GuoDianSpider()
+    #     guodian.run()
+    #     os.system("echo \"guodian is running finished.\" >> %s" %  path)
+    # except:
+    #     print("guodian run error...")
+    #     print(traceback.format_exc())
 
-    try:
-        guoneng=GuoNengSpider()
-        guoneng.run()
-    except:
-        print("guoneng run error...")
-        traceback.print_exc()
+    # try:
+    #     guoneng=GuoNengSpider()
+    #     guoneng.run()
+    # except:
+    #     print("guoneng run error...")
+    #     print(traceback.format_exc())
 
     try:
         huadian=HuaDianSpider()
         huadian.run()
     except:
         print("huadian run error...")
-        traceback.print_exc()
-
-    try:
-        huaneng=HuaNengSpider()
-        huaneng.run()
-    except:
-        print("huaneng run error...")
-        traceback.print_exc()
-
-    try:
-        shenhua=ShenHuaSpider()
-        shenhua.run()
-    except:
-        print("shenhua run error...")
-        traceback.print_exc()
+        print(traceback.format_exc())
+    #
+    # try:
+    #     huaneng=HuaNengSpider()
+    #     huaneng.run()
+    # except:
+    #     print("huaneng run error...")
+    #     print(traceback.format_exc())
+    #
+    # try:
+    #     shenhua=ShenHuaSpider()
+    #     shenhua.run()
+    # except:
+    #     print("shenhua run error...")
+    #     print(traceback.format_exc())
 
     # try:
     #     zhaocai=ZhaoCaiSpider()
     #     zhaocai.run()
     # except:
     #     print("zhaocai run error...")
-    #     traceback.print_exc()
+    #     print(traceback.format_exc())
 
-    send_mail()
+    time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    os.system("echo \"%s is running finished.\" >> %s" %(str(time_now), path))
+
+    # send_mail()
