@@ -12,7 +12,6 @@ import traceback
 from lxml import etree
 from common_func import DbProxy
 
-
 key_words_list = ['安全', '工控', '主机', '等保', '加固', '信息', '监控', '防护', '信息安全', '电子监控', '安全防护', '安全改造', '安全加固', '网络安全', '安全生产', '安全审计', '威胁检测', '防护优化', '工控信息', '电力监控', '防火墙', '安防系统']
 
 
@@ -508,29 +507,15 @@ class ZhaoCaiSpider(BaseSpider):
         session=self.get_login_session(self.login_url, self.form_data)
         total_list = self.get_total(session)
         print(total_list)
-        # for i, total in enumerate(total_list):
-        #     j = 1
-        #     while j < total+1:
-        #         url = self.url_temp_list[i].format(j)
-        #         print(url)
-        #         self.get_content(url, i, session)
-        #         j += 1
-        #         time.sleep(5)
+        for i, total in enumerate(total_list):
+            j = 1
+            while j < total+1:
+                url = self.url_temp_list[i].format(j)
+                print(url)
+                self.get_content(url, i, session)
+                j += 1
+                time.sleep(5)
 
-"""
-CREATE TABLE `bidding_list` (
-  `bId` int(11) NOT NULL AUTO_INCREMENT,
-  `title` varchar(128) unique DEFAULT NULL,
-  `src` varchar(64) DEFAULT NULL,
-  `start` varchar(64) DEFAULT NULL,
-  `end` varchar(64) DEFAULT NULL,
-  `href` varchar(128) DEFAULT NULL,
-  `tmp` varchar(64) DEFAULT NULL,
-  `res_1` varchar(128) DEFAULT NULL,
-  `res_2` varchar(128) DEFAULT NULL,
-  `res_3` varchar(128) DEFAULT NULL,
-  PRIMARY KEY (`bId`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8;"""
 
 if __name__ == '__main__':
     path = "./log.log"
@@ -542,33 +527,33 @@ if __name__ == '__main__':
         print("guodian run error...")
         print(traceback.format_exc())
 
-    try:
-        guoneng=GuoNengSpider()
-        guoneng.run()
-    except:
-        print("guoneng run error...")
-        print(traceback.format_exc())
+    # try:
+    #     guoneng=GuoNengSpider()
+    #     guoneng.run()
+    # except:
+    #     print("guoneng run error...")
+    #     print(traceback.format_exc())
 
-    try:
-        huadian=HuaDianSpider()
-        huadian.run()
-    except:
-        print("huadian run error...")
-        print(traceback.format_exc())
-
-    try:
-        huaneng=HuaNengSpider()
-        huaneng.run()
-    except:
-        print("huaneng run error...")
-        print(traceback.format_exc())
-
-    try:
-        shenhua=ShenHuaSpider()
-        shenhua.run()
-    except:
-        print("shenhua run error...")
-        print(traceback.format_exc())
+    # try:
+    #     huadian=HuaDianSpider()
+    #     huadian.run()
+    # except:
+    #     print("huadian run error...")
+    #     print(traceback.format_exc())
+    #
+    # try:
+    #     huaneng=HuaNengSpider()
+    #     huaneng.run()
+    # except:
+    #     print("huaneng run error...")
+    #     print(traceback.format_exc())
+    #
+    # try:
+    #     shenhua=ShenHuaSpider()
+    #     shenhua.run()
+    # except:
+    #     print("shenhua run error...")
+    #     print(traceback.format_exc())
 
     # try:
     #     zhaocai=ZhaoCaiSpider()

@@ -48,46 +48,6 @@ class SendMail(object):
         print("邮件发送成功")
 
 
-"""
-mail_host = "smtp.exmail.qq.com"  #设置服务器
-mail_user = "zhangshg@tdhxkj.com"    #用户名
-mail_pass = "TDHXtdhx2018"   #口令
-
-sender = "zhangshg@tdhxkj.com"
-receivers = ["zhangshg@tdhxkj.com"]
-
-def init_mail(message):
-    message['From'] = Header("张身高<zhangshg@tdhxkj.com>", 'utf-8')
-    message['To'] =  Header('运营<yunying>', 'utf-8')
-    time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-    subject = '招标信息 ' + time_now + ' 获取更新'
-    message['Subject'] = Header(subject, 'utf-8')
-    # 邮件正文内容
-    content_1 = MIMEText('    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n', 'plain', 'utf-8')
-    message.attach(content_1)
-
-
-def add_attcah(message, file_name):
-    # 构造附件
-    att1 = MIMEText(open('./'+file_name, 'rb').read(), 'base64', 'utf-8')
-    att1["Content-Type"] = 'application/octet-stream'
-    att1["Content-Disposition"] = 'attachment; filename="' + file_name + '"'
-    message.attach(att1)
-
-
-def send_mail(file_name="bidding_info.csv"):
-    # 创建一个带附件的邮件
-    msg = MIMEMultipart()
-    init_mail(msg)
-    add_attcah(msg, file_name)
-    smtpObj = smtplib.SMTP()
-    smtpObj.connect(mail_host, 25)    # 25为SMTP服务端口号
-    smtpObj.login(mail_user,mail_pass)
-    smtpObj.sendmail(sender, receivers, msg.as_string())
-    print("邮件发送成功")
-"""
-
-
 class DbProxy(object):
     def __init__(self):
         self.connect_status=1
