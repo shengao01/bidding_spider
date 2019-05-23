@@ -1,33 +1,52 @@
 # coding: utf-8
+import logging
+import os
 import requests
 import csv
 import codecs
 import json
 import time
 import re
+import jieba
 import traceback
 from lxml import etree
+from common_func import DbProxy
+
+
+key_words_list = ['安全', '工控', '主机', '等保', '加固', '信息', '监控', '防护', '信息安全', '电子监控', '安全防护', '安全改造', '安全加固', '网络安全', '安全生产', '安全审计', '威胁检测', '防护优化', '工控信息', '电力监控', '防火墙', '安防系统']
 
 
 class BaseSpider(object):
     """
     基类,实现通用功能
+   User-Agent: Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko
     """
     def __init__(self):
         self.headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36"
+            # "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.94 Safari/537.36"
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64; Trident/7.0; rv:11.0) like Gecko"
         }
+        self.db = DbProxy()
 
     def _parse_url(self, url):
         resp = requests.get(url, headers=self.headers, timeout=20)
         return resp.content.decode()
 
-    def parse_url(self, url):
+    def parse_url(self, url, session=""):
         try:
-            html_str = self._parse_url(url)
+            if session:
+                resp = session.get(url, headers=self.headers, timeout=20)
+                html_str = resp.content.decode()
+            else:
+                html_str = self._parse_url(url)
         except:
             html_str = None
         return html_str
+
+    def get_login_session(self, url, form_data):
+        session = requests.session()
+        session.post(url,headers=self.headers,data=form_data)
+        return session
 
     def post_url(self, url, form_data):
         try:
@@ -37,11 +56,50 @@ class BaseSpider(object):
             html_str = None
         return html_str
 
-    def write_file(self, cont_str, filename):
-        f = codecs.open(filename, 'a', 'utf_8_sig')
-        writer = csv.writer(f)
-        writer.writerow(cont_str)
-        f.close()
+    def write_db(self, cont_str):
+        if cont_str[-1] == 1:
+            title = cont_str[0]
+            start_date = cont_str[2]
+            end_date = cont_str[3]
+            href = cont_str[4]
+        elif cont_str[-1] == 2:
+            title=cont_str[0]
+            start_date=cont_str[3]
+            end_date=cont_str[4]
+            href=cont_str[5]
+        elif cont_str[-1] == 3:
+            title=cont_str[0]
+            start_date=cont_str[4]
+            end_date=""
+            href=cont_str[5]
+        elif cont_str[-1] == 4:
+            title=cont_str[0]
+            start_date=cont_str[2]
+            end_date=""
+            href=cont_str[3]
+        else:
+            title=cont_str[0]
+            start_date=cont_str[3]
+            end_date=""
+            href=cont_str[4]
+        time_now = int(time.time())
+        sql_str = "insert into bidding_list(title, src, start, end, href, tmp) values(\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\")".format(title, cont_str[-1], start_date, end_date, href, time_now)
+        print(sql_str)
+        self.db.write_db(sql_str)
+
+    def write_file(self, cont_str, filename, num):
+        seg_list = jieba.cut(cont_str[0], cut_all=True)
+        for item in seg_list:
+            if len(item) > 1:
+                if item in key_words_list:
+                    f = codecs.open(filename, 'a', 'utf_8_sig')
+                    writer = csv.writer(f)
+                    print(cont_str)
+                    writer.writerow(cont_str)
+                    cont_str.append(num)
+                    self.write_db(cont_str)
+                    f.close()
+                    break
 
 
 class GuoDianSpider(BaseSpider):
@@ -58,7 +116,7 @@ class GuoDianSpider(BaseSpider):
         self.map_dict = {0: "货物", 1: "工程", 2: "服务"}
         f = codecs.open(self.filename, 'w', 'utf_8_sig')
         writer = csv.writer(f)
-        writer.writerow(['来源', '标题', '开始时间', '结束时间', '链接'])
+        writer.writerow(['标题', '来源', '开始时间', '结束时间', '链接'])
         f.close()
 
     def get_total(self):
@@ -93,9 +151,10 @@ class GuoDianSpider(BaseSpider):
                         print(item["end_date"])
                         return True
                 item["href"] = li.xpath("./a/@href")[0]
-                cont_str = list(item.values())
-                print(cont_str)
-                self.write_file(cont_str, self.filename)
+                cont_str = [item['title'], item['src'], item['start_date'], item['end_date'], item['href']]
+                # print(cont_str)
+                self.write_file(cont_str, self.filename, 1)
+                # self.write_db(cont_str,1)
 
     def run(self):
         total_list = self.get_total()
@@ -134,14 +193,14 @@ class GuoNengSpider(BaseSpider):
             for row in item_list:
                 write_list = [row["inquireName"], row['inquireCode'], row['publishArea'], row['publishTimeString'],
                               row['quotDeadlineString'], row['articleUrl']]
-                print(write_list)
+                # print(write_list)
                 if row['quotDeadlineString']:
                     ta = time.strptime(row['quotDeadlineString'], "%Y-%m-%d %H:%M:%S")
                     ts = time.mktime(ta)
                     if ts < time.time():
                         # print(row['quotDeadlineString'])
                         return True
-                self.write_file(write_list, self.filename)
+                self.write_file(write_list, self.filename, 2)
             # print(len(item_list))
             # print(item_list[0])
 
@@ -172,6 +231,7 @@ class HuaDianSpider(BaseSpider):
     """
     def __init__(self):
         super(HuaDianSpider, self).__init__()
+        "https://www.chdtp.com.cn/webs/displayNewsCgxxAction.action?page.currentpage=1"
         self.url_temp = ["https://www.chdtp.com.cn/webs/displayNewsCgxxAction.action?page.currentpage={}",
                          "https://www.chdtp.com.cn/webs/queryWebZbgg.action?page.currentpage={}"]
         self.url_part = "https://www.chdtp.com.cn/staticPage/"
@@ -179,12 +239,14 @@ class HuaDianSpider(BaseSpider):
         self.filename = "huadian_list.csv"
         f = codecs.open(self.filename, 'w', 'utf_8_sig')
         writer = csv.writer(f)
-        writer.writerow(['来源', '状态', '名称', '单位', '开始时间', '链接'])
+        writer.writerow(['名称', '来源', '状态', '单位', '开始时间', '链接'])
         f.close()
 
-    def get_content_list(self, detail_url, num):
+    def get_content_list(self, detail_url, num):  
         detail_html_str = self.parse_url(detail_url)
-        # print(detail_html_str)
+        if not detail_html_str:
+            detail_html_str = " "
+        print(detail_html_str)
         detail_html = etree.HTML(detail_html_str)
         cont_list = detail_html.xpath("//table//tr")[1:-1]
         print(len(cont_list))
@@ -206,16 +268,20 @@ class HuaDianSpider(BaseSpider):
             href_str = cont.xpath("./td/a[1]/@href")[0]
             tail_url = re.findall(r"toGetContent\('(.*)'\)", href_str)[0]
             item["href"] = self.url_part + tail_url
-            print(item)
+            # print(item)
             if item["state"]:
-                write_list = [item["src"], item["state"], item["title"], item["company"], item["date"], item["href"]]
-                self.write_file(write_list, self.filename)
+                write_list = [item["title"], item["src"], item["state"], item["company"], item["date"], item["href"]]
+                self.write_file(write_list, self.filename, 3)
 
     def get_total(self):
         total_list = []
         for url in self.url_temp:
             url = url.format(1)
+            print(url)
             detail_html_str = self.parse_url(url)
+            if not detail_html_str:
+                detail_html_str = " "
+            print(detail_html_str)
             detail_html = etree.HTML(detail_html_str)
             total_str = detail_html.xpath('//tr/td/span[@class="page"]/text()')[3]
             total_num = int(re.findall(r"1/(.*)? 页", total_str)[0])
@@ -256,7 +322,7 @@ class HuaNengSpider(BaseSpider):
         self.filename = "huaneng_list.csv"
         f = codecs.open(self.filename, 'w', 'utf_8_sig')
         writer = csv.writer(f)
-        writer.writerow(['来源', '名称', '开始时间', '链接'])
+        writer.writerow(['名称', '来源', '开始时间', '链接'])
         f.close()
 
     def get_total(self):
@@ -288,9 +354,9 @@ class HuaNengSpider(BaseSpider):
                 href_str = cont.xpath("./a/@href")[0]
                 tail_url = re.findall(r"announcementClick\('(.*?)','", href_str)[0]
                 item["href"] = self.url_part.format(tail_url)
-                print(item)
-                write_list = [item["src"], item["title"], item["date"], item["href"]]
-                self.write_file(write_list, self.filename)
+                # print(item)
+                write_list = [item["title"], item["src"], item["date"], item["href"]]
+                self.write_file(write_list, self.filename, 4)
 
     def run(self):
         total_list = self.get_total()
@@ -323,7 +389,7 @@ class ShenHuaSpider(BaseSpider):
         self.filename = "shenhua_list.csv"
         f = codecs.open(self.filename, 'w', 'utf_8_sig')
         writer = csv.writer(f)
-        writer.writerow(['来源', '编号', '名称', '开始时间', '链接'])
+        writer.writerow(['名称', '编号', '来源', '开始时间', '链接'])
         f.close()
 
     def get_total(self):
@@ -361,9 +427,9 @@ class ShenHuaSpider(BaseSpider):
                         return True
                 href_str = cont.xpath(".//a[1]/@href")[0]
                 item["href"] = self.url_part + href_str
-                print(item)
-                write_list = [item["src"], item["num"], item["title"], item["date"], item["href"]]
-                self.write_file(write_list, self.filename)
+                # print(item)
+                write_list = [item["title"], item["num"], item["src"], item["date"], item["href"]]
+                self.write_file(write_list, self.filename, 5)
 
     def run(self):
         total_list = self.get_total()
@@ -372,7 +438,8 @@ class ShenHuaSpider(BaseSpider):
             while j < total+1:
                 url = self.url_temp_list[i].format(j)
                 print(url)
-                self.get_content(url, i)
+                if self.get_content(url, i):
+                    break
                 j += 1
                 time.sleep(0.1)
 
@@ -384,99 +451,131 @@ class ZhaoCaiSpider(BaseSpider):
     """
     def __init__(self):
         super(ZhaoCaiSpider, self).__init__()
-        self.url_temp_list = ["https://www.zbytb.com/gongcheng-{}.html",
-                              "https://www.zbytb.com/huowu-{}.html",
-                              "https://www.zbytb.com/fuwu-{}.html",
-                              "https://www.zbytb.com/dianli-{}.html",
-                              "https://www.zbytb.com/shiyou-{}.html"]
+        self.url_temp_list = ["https://www.zbytb.com/zb/search.php?page=1&kw={}".format(i) for i in key_words_list]
         self.url_part = ""
+        self.login_url = "https://www.zbytb.com/member/login.php"
+        self.form_data = {
+            "forward": "https://www.zbytb.com/member/my.php",
+            "username": "Tdhx2018",
+            "password": "123456",
+            "cookietime": 1,
+            "submit": 1,
+            "ajax": 1
+            }
         self.map_dict = {0: "工程", 1: "货物", 2: "服务", 3: "电力", 4: "石油"}
         self.filename = "zhaocai_list.csv"
         f = codecs.open(self.filename, 'w', 'utf_8_sig')
         writer = csv.writer(f)
-        writer.writerow(['来源', '地区', '名称', '开始时间', '链接'])
+        writer.writerow(['名称', '来源', '地区', '开始时间', '链接'])
         f.close()
 
-    def get_total(self):
+    def get_total(self, session):
         total_list = []
         for url in self.url_temp_list:
-            url = url.format(1)
-            detail_html_str = self.parse_url(url)
-            detail_html = etree.HTML(detail_html_str)
-            total_str = detail_html.xpath('//div[@class="pages"]//cite/text()')[0]
-            total_num = int(re.findall(r"条/(.*?)页", total_str)[0])
+            # url = url.format(1)
+            try:
+                detail_html_str = self.parse_url(url, session)
+                if detail_html_str:
+                    detail_html = etree.HTML(detail_html_str)
+                    total_str = detail_html.xpath('//div[@class="pages"]//cite/text()')[0]
+                    total_num = int(re.findall(r"条/(.*?)页", total_str)[0])
+                    time.sleep(5)
+            except:
+                total_num = 1
+            print(total_num)
             total_list.append(total_num)
         return total_list
 
-    def get_content(self, detail_url, num):
+    def get_content(self, detail_url, num, session):
         if detail_url is not None:
-            detail_html_str = self.parse_url(detail_url)
-            # print(detail_html_str)
+            detail_html_str = self.parse_url(detail_url, session)
+            print(detail_html_str)
             detail_html = etree.HTML(detail_html_str)
             cont_list = detail_html.xpath('//tr[@class="hover_tr"]')
             for cont in cont_list:
                 item = {}
                 item["src"] = self.map_dict[num]
                 item["title"] = cont.xpath("./td[2]/a/text()")[0]
-                item["area"] = cont.xpath("./td[1]/a/text()")[0]
+                item["area"] = cont.xpath("./td[1]/a/text()")[0] if cont.xpath("./td[1]/a/text()") else " "
                 # item["state"] = cont.xpath("./td[1]/span/text()")[0]
                 item["date"] = cont.xpath("./td[4]/text()")[0].strip()
                 item["href"] = cont.xpath("./td[2]/a/@href")[0].strip()
-                print(item)
-                write_list = [item["src"], item["area"], item["title"], item["date"], item["href"]]
-                self.write_file(write_list, self.filename)
+                # print(item)
+                write_list = [item["title"], item["src"], item["area"], item["date"], item["href"]]
+                self.write_file(write_list, self.filename, 6)
 
     def run(self):
-        total_list = self.get_total()
-        for i, total in enumerate(total_list):
-            j = 1
-            while j < total+1:
-                url = self.url_temp_list[i].format(j)
-                print(url)
-                self.get_content(url, i)
-                j += 1
-                time.sleep(5)
+        session=self.get_login_session(self.login_url, self.form_data)
+        total_list = self.get_total(session)
+        print(total_list)
+        # for i, total in enumerate(total_list):
+        #     j = 1
+        #     while j < total+1:
+        #         url = self.url_temp_list[i].format(j)
+        #         print(url)
+        #         self.get_content(url, i, session)
+        #         j += 1
+        #         time.sleep(5)
 
+"""
+CREATE TABLE `bidding_list` (
+  `bId` int(11) NOT NULL AUTO_INCREMENT,
+  `title` varchar(128) unique DEFAULT NULL,
+  `src` varchar(64) DEFAULT NULL,
+  `start` varchar(64) DEFAULT NULL,
+  `end` varchar(64) DEFAULT NULL,
+  `href` varchar(128) DEFAULT NULL,
+  `tmp` varchar(64) DEFAULT NULL,
+  `res_1` varchar(128) DEFAULT NULL,
+  `res_2` varchar(128) DEFAULT NULL,
+  `res_3` varchar(128) DEFAULT NULL,
+  PRIMARY KEY (`bId`)
+) ENGINE=MyISAM DEFAULT CHARSET=utf8;"""
 
 if __name__ == '__main__':
-    # try:
-    #     guodian=GuoDianSpider()
-    #     guodian.run()
-    # except:
-    #     print("guodian run error...")
-    #     traceback.print_exc()
+    path = "./log.log"
+    try:
+        guodian=GuoDianSpider()
+        guodian.run()
+        os.system("echo \"guodian is running finished.\" >> %s" %  path)
+    except:
+        print("guodian run error...")
+        print(traceback.format_exc())
 
-    # try:
-    #     guoneng=GuoNengSpider()
-    #     guoneng.run()
-    # except:
-    #     print("guoneng run error...")
-    #     traceback.print_exc()
+    try:
+        guoneng=GuoNengSpider()
+        guoneng.run()
+    except:
+        print("guoneng run error...")
+        print(traceback.format_exc())
 
-    # try:
-    #     huadian=HuaDianSpider()
-    #     huadian.run()
-    # except:
-    #     print("huadian run error...")
-    #     traceback.print_exc()
+    try:
+        huadian=HuaDianSpider()
+        huadian.run()
+    except:
+        print("huadian run error...")
+        print(traceback.format_exc())
 
-    # try:
-    #     huaneng=HuaNengSpider()
-    #     huaneng.run()
-    # except:
-    #     print("huaneng run error...")
-    #     traceback.print_exc()
+    try:
+        huaneng=HuaNengSpider()
+        huaneng.run()
+    except:
+        print("huaneng run error...")
+        print(traceback.format_exc())
 
     try:
         shenhua=ShenHuaSpider()
         shenhua.run()
     except:
         print("shenhua run error...")
-        traceback.print_exc()
+        print(traceback.format_exc())
 
     # try:
     #     zhaocai=ZhaoCaiSpider()
     #     zhaocai.run()
     # except:
     #     print("zhaocai run error...")
-    #     traceback.print_exc()
+    #     print(traceback.format_exc())
+
+    time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+    os.system("echo \"%s is running finished.\" >> %s" %(str(time_now), path))
