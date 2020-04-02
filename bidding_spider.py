@@ -12,8 +12,8 @@ import traceback
 from lxml import etree
 from common_func import DbProxy
 
-key_words_list = ['安全', '工控', '主机', '等保', '加固', '信息', '监控', '防护', '攻防', '演练', '威胁', '检测', '防火墙', '安防系统']
-
+key_words_list = ['安全', '工控', '主机', '等保', '加固', '信息', '监控', '防护', '攻防', '演练', '威胁', '检测','防火墙', '安防系统']
+key_words_list_1 = ['变电','二次','防病毒','入侵', '配电','省调']
 
 class BaseSpider(object):
     """
@@ -54,7 +54,7 @@ class BaseSpider(object):
             html_str = None
         return html_str
 
-    def write_db(self, cont_str):
+    def write_db(self, cont_str, bidding_type):
         if cont_str[-1] == 1:
             title = cont_str[0]
             start_date = cont_str[2]
@@ -75,13 +75,23 @@ class BaseSpider(object):
             start_date=cont_str[2]
             end_date=""
             href=cont_str[3]
-        else:
+        elif cont_str[-1] == 5:
             title=cont_str[0]
             start_date=cont_str[3]
             end_date=""
             href=cont_str[4]
+        elif cont_str[-1] == 7:
+            title=cont_str[0]
+            start_date=cont_str[1]
+            end_date=""
+            href=cont_str[2]
         time_now = int(time.time())
-        sql_str = "insert into bidding_list(title, src, start, end, href, tmp) values(\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\")".format(title, cont_str[-1], start_date, end_date, href, time_now)
+        if bidding_type == 1:
+            sql_str = "insert into bidding_list(title, src, start, end, href, tmp) values(\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\")".format(title, cont_str[-1], start_date, end_date, href, time_now)
+        elif bidding_type == 2:
+            sql_str = "insert into station_list(title, src, start, end, href, tmp) values(\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\")".format(title, cont_str[-1], start_date, end_date, href, time_now)
+        else:
+            sql_str = "a empty sql_str"
         print(sql_str)
         res = self.db.write_db(sql_str)
         if res == 1:
@@ -91,16 +101,28 @@ class BaseSpider(object):
         seg_list = jieba.cut(cont_str[0], cut_all=True)
         for item in seg_list:
             if len(item) > 1 and item in key_words_list:
-                f = codecs.open(filename, 'a', 'utf_8_sig')
-                writer = csv.writer(f)
-                print(cont_str)
-                writer.writerow(cont_str)
-                cont_str.append(num)
-                res = self.write_db(cont_str)
+                # f = codecs.open(filename, 'a', 'utf_8_sig')
+                # writer = csv.writer(f)
+                # print(cont_str)
+                # writer.writerow(cont_str)
+                # cont_str.append(num)
+                # f.close()
+                res = self.write_db(cont_str, 1)
                 if res == 1:
                     return True
-                f.close()
                 break
+            if len(item) > 1 and item in key_words_list_1:
+                # f = codecs.open(filename, 'a', 'utf_8_sig')
+                # writer = csv.writer(f)
+                # print(cont_str)
+                # writer.writerow(cont_str)
+                # f.close()
+                cont_str.append(num)
+                res = self.write_db(cont_str, 2)
+                if res == 1:
+                    return True
+                break
+
 
 
 class GuoDianSpider(BaseSpider):
@@ -522,6 +544,50 @@ class ZhaoCaiSpider(BaseSpider):
                 time.sleep(5)
 
 
+class NanDianSpider(BaseSpider):
+    """
+    南方电网数据
+    http://www.bidding.csg.cn
+    """
+    def __init__(self):
+        super(NanDianSpider, self).__init__()
+        self.filename = "nandian.csv"
+        self.url_temp = "http://www.bidding.csg.cn/zbgg/index_{}.jhtml"
+        self.url_part = "http://www.bidding.csg.cn"
+
+    def get_content(self, detail_url):
+        if detail_url is not None:
+            detail_html_str = self.parse_url(detail_url)
+            # print(detail_html_str)
+            detail_html=etree.HTML(detail_html_str)
+            cont_list = detail_html.xpath('//div[@class="BorderEEE NoBorderTop List1 Black14 Padding5"]/ul/li')
+            for cont in cont_list:
+                item = {}
+                item["title"]=cont.xpath("./a/text()")[0]
+                # item["state"] = cont.xpath("./td[1]/span/text()")[0]
+                item["date"]=cont.xpath("./span/text()")[0].strip()
+                print(item["date"])
+                # if item["date"]:
+                #     day=item["date"]
+                #     ta=time.strptime(day, "%Y-%m-%d")
+                #     ts=time.mktime(ta)
+                #     if int(time.time()) - int(ts) > 60 * 24 * 60 * 60:
+                #         return True
+                href_str=cont.xpath("./a/@href")[0]
+                item["href"]=self.url_part + href_str
+                print(item)
+                write_list = [item["title"], item["date"], item["href"]]
+                self.write_file(write_list, self.filename, 7)
+
+    def run(self):
+        for i in range(20):
+            url = self.url_temp.format(i+1)
+            res = self.get_content(url)
+            if res:
+                break
+            time.sleep(1)
+
+
 if __name__ == '__main__':
     path = "./log.log"
     try:
@@ -566,6 +632,13 @@ if __name__ == '__main__':
     # except:
     #     print("zhaocai run error...")
     #     print(traceback.format_exc())
+
+    try:
+        nandian=NanDianSpider()
+        nandian.run()
+    except:
+        print("nandian run error...")
+        print(traceback.format_exc())
 
     time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     os.system("echo \"%s is running finished.\" >> %s" %(str(time_now), path))

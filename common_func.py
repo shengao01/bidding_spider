@@ -10,27 +10,35 @@ pymysql.install_as_MySQLdb()
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
+from common_var import *
 
 
 class SendMail(object):
-    def __init__(self, filenname):
+    def __init__(self, filenname, filename1, num):
         self.mail_host="smtp.exmail.qq.com"  # 设置服务器
-        self.mail_user="****"  # 用户名
-        self.mail_pass="****"  # 口令
-        self.sender="****"
-        self.receivers=["****"]
+        self.mail_user= MAIL_USER  # 用户名
+        self.mail_pass= MAIL_PASSWD  # 口令
+        self.sender= MAIL_USER
+        # self.receivers=["zhangshg@tdhxkj.com"]
+        self.receivers= RECEIVERS
         self.message = MIMEMultipart()
         self.smtpObj = smtplib.SMTP()
         self.filenname = filenname
+        self.filenname1 = filename1
+        self.num = num
 
-    def init_message(self, message):
-        message['From']=Header("****", 'utf-8')
-        message['To']=Header('运营<yunying>', 'utf-8')
+    def init_message(self, message, num):
+        message['From']=Header("张身高<{}>".format(MAIL_USER), 'utf-8')
+        message['To']=Header('for运营<yunying>', 'utf-8')
         time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        subject='招标信息 ' + time_now + ' 获取更新'
+        subject='招标信息 ' + time_now + ' 获取更新(接前次数据)'
         message['Subject']=Header(subject, 'utf-8')
         # 邮件正文内容
-        content_1=MIMEText('    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n', 'plain', 'utf-8')
+        head = "    此次新增内容{}条,详情请查阅附件。\n".format(num)
+        content_1=MIMEText(head + "    bidding_info.csv信息筛选的关键字为: ['安全', '工控', '主机', '等保', '加固', '信息', "
+                                  "'监控', '防护', '攻防', '演练', '威胁', '检测','态势', '感知', '日志', '审计', '防火墙', '安防系统'],\n"
+                                  "    substation.csv信息筛选的关键字为: ['变电', '二次', '防病毒', '入侵', '省调', '配电'], \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')
+        # content_2=MIMEText(head + "    以下是sunstation.csv信息筛选的关键字列表: ['变电','二次','防病毒','入侵','省调','配电'], \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')
         message.attach(content_1)
 
     def add_attach(self, message, file_name):
@@ -40,8 +48,9 @@ class SendMail(object):
         message.attach(att1)
 
     def run(self):
-        self.init_message(self.message)
+        self.init_message(self.message, self.num)
         self.add_attach(self.message, self.filenname)
+        self.add_attach(self.message, self.filenname1)
         self.smtpObj.connect(self.mail_host, 25)  # 25为SMTP服务端口号
         self.smtpObj.login(self.mail_user, self.mail_pass)
         self.smtpObj.sendmail(self.sender, self.receivers, self.message.as_string())
