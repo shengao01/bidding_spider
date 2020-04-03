@@ -20,8 +20,8 @@ class WriteSend(object):
         # s_time = time.strftime(time_str, "%Y-%m-%d %H:%M:%S")
         # time_stamp = int(time.mktime(s_time))
         time_stamp = int(time.mktime(time.localtime())) - (24*60*60)
-        if time_stamp < 1573185600:
-            time_stamp = 1573194000
+        if time_stamp < 1585896622:
+            time_stamp = 1585896622
         file_name = "bidding_info.csv"
         return file_name, time_stamp
 
@@ -30,8 +30,8 @@ class WriteSend(object):
         sql_str1="select count(*) from station_list where tmp>{}".format(tm)
         res, rows=self.db.read_db(sql_str)
         res, rows1=self.db.read_db(sql_str1)
-        total = rows[0][0] + rows1[0][0]
-        return total
+        # total = rows[0][0] + rows1[0][0]
+        return rows[0][0], rows1[0][0]
 
     def write_title(self, filename):
         f = codecs.open(filename, 'w', 'utf_8_sig')
@@ -54,20 +54,20 @@ class WriteSend(object):
             f.close()
             print(rows)
 
-    def send_email(self, filename, filename1, upnum):
-        if upnum > 0:
-            email = SendMail(filename, filename1, upnum)
+    def send_email(self, filename, filename1, num1, num2):
+        if num1 or num2:
+            email = SendMail(filename, filename1, num1, num2)
             email.run()
 
     def run(self):
         filename, timestamp = self.init_filename()
         station_filename = "substation.csv"
-        up_num = self.get_num(timestamp)
+        num1,num2 = self.get_num(timestamp)
         self.write_title(filename)
         self.write_title(station_filename)
         self.write_csv(filename, timestamp)
         self.write_csv(station_filename, timestamp)
-        self.send_email(filename,station_filename, up_num)
+        self.send_email(filename,station_filename, num1, num2)
 
 
 if __name__ == '__main__':

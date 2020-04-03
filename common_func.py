@@ -14,7 +14,7 @@ from common_var import *
 
 
 class SendMail(object):
-    def __init__(self, filenname, filename1, num):
+    def __init__(self, filenname, filename1, num1, num2):
         self.mail_host="smtp.exmail.qq.com"  # 设置服务器
         self.mail_user= MAIL_USER  # 用户名
         self.mail_pass= MAIL_PASSWD  # 口令
@@ -25,7 +25,9 @@ class SendMail(object):
         self.smtpObj = smtplib.SMTP()
         self.filenname = filenname
         self.filenname1 = filename1
-        self.num = num
+        self.num = num1
+        self.num2 = num2
+        self.total = num1 + num2
 
     def init_message(self, message, num):
         message['From']=Header("张身高<{}>".format(MAIL_USER), 'utf-8')
@@ -34,7 +36,7 @@ class SendMail(object):
         subject='招标信息 ' + time_now + ' 获取更新(接前次数据)'
         message['Subject']=Header(subject, 'utf-8')
         # 邮件正文内容
-        head = "    此次新增内容{}条,详情请查阅附件。\n".format(num)
+        head = "    此次新增内容{}条(其中一般招标信息{}条, 变电站相关{}条),详情请查阅附件。\n".format(self.total,self.num,self.num2)
         content_1=MIMEText(head + "    bidding_info.csv信息筛选的关键字为: ['安全', '工控', '主机', '等保', '加固', '信息', "
                                   "'监控', '防护', '攻防', '演练', '威胁', '检测','态势', '感知', '日志', '审计', '防火墙', '安防系统'],\n"
                                   "    substation.csv信息筛选的关键字为: ['变电', '二次', '防病毒', '入侵', '省调', '配电'], \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')

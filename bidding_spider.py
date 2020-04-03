@@ -105,8 +105,8 @@ class BaseSpider(object):
                 # writer = csv.writer(f)
                 # print(cont_str)
                 # writer.writerow(cont_str)
-                # cont_str.append(num)
                 # f.close()
+                cont_str.append(num)
                 res = self.write_db(cont_str, 1)
                 if res == 1:
                     return True
