@@ -12,8 +12,8 @@ import traceback
 from lxml import etree
 from common_func import DbProxy
 
-key_words_list = ['安全', '工控', '主机', '等保', '加固', '信息', '监控', '防护', '攻防', '演练', '威胁', '检测','防火墙', '安防系统']
-key_words_list_1 = ['变电','二次','防病毒','入侵', '配电','省调']
+key_words_list = ['安全', '工控', '主机', '等保', '加固', '信息', '监控', '防护', '攻防', '演练', '威胁', '入侵', '检测', '日志', '审计', '态势', '感知', '防火墙', '防病毒', '安防系统']
+key_words_list_1 = ['变电','二次', '配电','省调']
 
 class BaseSpider(object):
     """
@@ -278,11 +278,12 @@ class HuaDianSpider(BaseSpider):
         for cont in cont_list:
             item = {}
             item["src"] = self.map_dict[num]
-            item["title"] = cont.xpath("./td/a[1]/text()")[0]
-            item["company"] = cont.xpath("./td/a[2]/text()")[0]  if cont.xpath("./td/a[2]/text()") else None
-            state = cont.xpath("./td[1]/span/text()")[0] if cont.xpath("./td[1]/span/text()") else None
-            item["state"] = state.strip().strip("\r\n\t")
-            item["date"] = cont.xpath("./td[2]/span/text()")[0]
+            item["title"] = cont.xpath("./td[2]//text()")[0]
+            item["company"] = cont.xpath("./td[3]/text()")[0]  if cont.xpath("./td[3]/text()") else None
+            # state = cont.xpath("./td[1]/span/text()")[0] if cont.xpath("./td[1]/span/text()") else None
+            # item["state"] = state.strip().strip("\r\n\t")
+            item["state"] = " "
+            item["date"] = cont.xpath("./td[4]//text()")[0]
             date = re.findall(r'\[(.*?)\]', item["date"])
             if date:
                 day = date[0]
@@ -293,11 +294,11 @@ class HuaDianSpider(BaseSpider):
             href_str = cont.xpath("./td/a[1]/@href")[0]
             tail_url = re.findall(r"toGetContent\('(.*)'\)", href_str)[0]
             item["href"] = self.url_part + tail_url
-            # print(item)
-            if item["state"]:
-                item["date"] = item["date"].replace("[","").replace("]","")
-                write_list = [item["title"], item["src"], item["state"], item["company"], item["date"], item["href"]]
-                self.write_file(write_list, self.filename, 3)
+            print(item)
+            # if item["state"]:
+            item["date"] = item["date"].replace("[","").replace("]","")
+            write_list = [item["title"], item["src"], item["state"], item["company"], item["date"], item["href"]]
+            self.write_file(write_list, self.filename, 3)
 
     def get_total(self):
         total_list = []
@@ -590,20 +591,20 @@ class NanDianSpider(BaseSpider):
 
 if __name__ == '__main__':
     path = "./log.log"
-    try:
-        guodian=GuoDianSpider()
-        guodian.run()
-        os.system("echo \"guodian is running finished.\" >> %s" %  path)
-    except:
-        print("guodian run error...")
-        print(traceback.format_exc())
-
-    try:
-        guoneng=GuoNengSpider()
-        guoneng.run()
-    except:
-        print("guoneng run error...")
-        print(traceback.format_exc())
+    # try:
+    #     guodian=GuoDianSpider()
+    #     guodian.run()
+    #     os.system("echo \"guodian is running finished.\" >> %s" %  path)
+    # except:
+    #     print("guodian run error...")
+    #     print(traceback.format_exc())
+    #
+    # try:
+    #     guoneng=GuoNengSpider()
+    #     guoneng.run()
+    # except:
+    #     print("guoneng run error...")
+    #     print(traceback.format_exc())
 
     try:
         huadian=HuaDianSpider()
@@ -626,19 +627,19 @@ if __name__ == '__main__':
         print("shenhua run error...")
         print(traceback.format_exc())
 
-    # try:
-    #     zhaocai=ZhaoCaiSpider()
-    #     zhaocai.run()
-    # except:
-    #     print("zhaocai run error...")
-    #     print(traceback.format_exc())
-
     try:
         nandian=NanDianSpider()
         nandian.run()
     except:
         print("nandian run error...")
         print(traceback.format_exc())
+
+    # try:
+    #     zhaocai=ZhaoCaiSpider()
+    #     zhaocai.run()
+    # except:
+    #     print("zhaocai run error...")
+    #     print(traceback.format_exc())
 
     time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     os.system("echo \"%s is running finished.\" >> %s" %(str(time_now), path))
