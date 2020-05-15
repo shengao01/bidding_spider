@@ -80,7 +80,7 @@ class BaseSpider(object):
             start_date=cont_str[3]
             end_date=""
             href=cont_str[4]
-        elif cont_str[-1] == 7:
+        elif cont_str[-1] == 7 or cont_str[-1] == 8:
             title=cont_str[0]
             start_date=cont_str[1]
             end_date=""
@@ -135,6 +135,7 @@ class GuoDianSpider(BaseSpider):
         self.url_temp_list = ["http://www.cgdcbidding.com/ggsb/index_{}.jhtml",
                               "http://www.cgdcbidding.com/gggc/index_{}.jhtml",
                               "http://www.cgdcbidding.com/ggjg/index_{}.jhtml"]
+        self.url_temp = "https://cgdcbidding.dlzb.com/page-{}.shtml"
         self.filename = 'guodian_list.csv'
         self.map_dict = {0: "货物", 1: "工程", 2: "服务"}
         f = codecs.open(self.filename, 'w', 'utf_8_sig')
@@ -160,13 +161,14 @@ class GuoDianSpider(BaseSpider):
         if detail_url is not None:
             detail_html_str = self.parse_url(detail_url)
             detail_html = etree.HTML(detail_html_str)
-            content_list = detail_html.xpath('//div[@class="listbox"]//li')
+            content_list = detail_html.xpath('//div//ul[@class="cl_list"]//li')
             for li in content_list:
                 item={}
-                item["src"] = self.map_dict[num]
+                # item["src"] = self.map_dict[num]
+                item["src"] = "工程"
                 item["title"] = li.xpath("./a/@title")[0]
-                item["start_date"] = li.xpath('./a//input/@value')[0]
-                item["end_date"] = li.xpath('./a//input/@value')[1]
+                item["start_date"] = li.xpath('./p/text()')[0]
+                item["end_date"] = ""
                 if item["end_date"]:
                     ta = time.strptime(item["end_date"], "%Y-%m-%d %H:%M")
                     ts = time.mktime(ta)
@@ -175,22 +177,29 @@ class GuoDianSpider(BaseSpider):
                         return True
                 item["href"] = li.xpath("./a/@href")[0]
                 cont_str = [item['title'], item['src'], item['start_date'], item['end_date'], item['href']]
-                # print(cont_str)
+                print(item)
                 self.write_file(cont_str, self.filename, 1)
                 # self.write_db(cont_str,1)
 
     def run(self):
-        total_list = self.get_total()
-        for i, total in enumerate(total_list):
-            j = 1
-            while j < total+1:
-                url = self.url_temp_list[i].format(j)
-                print(url)
-                res = self.get_content(url, i)
-                if res:
-                    break
-                j += 1
-                time.sleep(0.1)
+        # total_list = self.get_total()
+        # for i, total in enumerate(total_list):
+        #     j = 1
+        #     while j < total+1:
+        #         url = self.url_temp_list[i].format(j)
+        #         print(url)
+        #         res = self.get_content(url, i)
+        #         if res:
+        #             break
+        #         j += 1
+        #         time.sleep(0.1)
+        for i in range(5):
+            url = self.url_temp.format(i+1)
+            print(url)
+            res=self.get_content(url, i)
+            if res:
+                break
+            time.sleep(0.1)
 
 
 class GuoNengSpider(BaseSpider):
@@ -589,22 +598,58 @@ class NanDianSpider(BaseSpider):
             time.sleep(1)
 
 
+class CaizhaoSpider(BaseSpider):
+    """www.chinabidding.com,采购与招标网数据获取"""
+    def __init__(self):
+        super(CaizhaoSpider, self).__init__()
+        self.filename = "caizhao.csv"
+        self.url_temp = "http://www.chinabidding.cn/zbxx/zbgg/{}.html"
+        self.url_part = "http://www.chinabidding.cn"
+
+    def get_content(self, detail_url):
+        if detail_url is not None:
+            detail_html_str = self.parse_url(detail_url)
+            # print(detail_html_str)
+            detail_html=etree.HTML(detail_html_str)
+            cont_list = detail_html.xpath('//div[@class="y_n_y fl"]//tr[@class="yj_nei"]')
+            for cont in cont_list:
+                item = {}
+                item["title"]=cont.xpath(".//td/a/@title")[0].strip()
+                # item["state"] = cont.xpath("./td[1]/span/text()")[0]
+                item["date"]=cont.xpath(".//td/text()")[1].strip()
+                # print(item["date"])
+                href_str=cont.xpath(".//td/a/@href")[0]
+                item["href"]=self.url_part + href_str
+                print(item)
+                write_list=[item["title"], item["date"], item["href"]]
+                self.write_file(write_list, self.filename, 8)
+
+    def run(self):
+        for i in range(40):
+            print("enter page===={}".format(i))
+            url = self.url_temp.format(i+1)
+            res = self.get_content(url)
+            if res:
+                break
+            time.sleep(2)
+
+
 if __name__ == '__main__':
     path = "./log.log"
-    # try:
-    #     guodian=GuoDianSpider()
-    #     guodian.run()
-    #     os.system("echo \"guodian is running finished.\" >> %s" %  path)
-    # except:
-    #     print("guodian run error...")
-    #     print(traceback.format_exc())
-    #
-    # try:
-    #     guoneng=GuoNengSpider()
-    #     guoneng.run()
-    # except:
-    #     print("guoneng run error...")
-    #     print(traceback.format_exc())
+    try:
+        guodian=GuoDianSpider()
+        guodian.run()
+        os.system("echo \"guodian is running finished.\" >> %s" %  path)
+    except:
+        print("guodian run error...")
+        print(traceback.format_exc())
+
+    try:
+        guoneng=GuoNengSpider()
+        guoneng.run()
+    except:
+        print("guoneng run error...")
+        print(traceback.format_exc())
 
     try:
         huadian=HuaDianSpider()
@@ -632,6 +677,13 @@ if __name__ == '__main__':
         nandian.run()
     except:
         print("nandian run error...")
+        print(traceback.format_exc())
+
+    try:
+        caizhao = CaizhaoSpider()
+        caizhao.run()
+    except:
+        print("caizhao run error...")
         print(traceback.format_exc())
 
     # try:
