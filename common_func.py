@@ -22,6 +22,7 @@ class SendMail(object):
         # self.receivers=["zhangshg@tdhxkj.com"]
         self.receivers= RECEIVERS
         self.message = MIMEMultipart()
+#        self.smtpObj = smtplib.SMTP_SSL(self.mail_host, 463)
         self.smtpObj = smtplib.SMTP()
         self.filenname = filenname
         self.filenname1 = filename1
@@ -39,7 +40,7 @@ class SendMail(object):
         head = "    此次新增内容{}条(其中一般招标信息{}条, 变电站相关{}条),详情请查阅附件。\n".format(self.total,self.num,self.num2)
         content_1=MIMEText(head + "    bidding_info.csv信息筛选的关键字为: ['安全', '工控', '主机', '等保', '加固', '信息', "
                                   "'监控', '防护', '攻防', '演练', '威胁', '入侵', '检测', '日志', '审计', '态势', '感知', '防火墙', '防病毒', '安防系统'],\n"
-                                  "    substation.csv信息筛选的关键字为: ['变电', '二次', '省调', '配电'], \n    如有需要可新增(本次更新加入了采购与招标网信息,以及修复了国电招标网网址变更引发的异常)。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')
+                                  "    substation.csv信息筛选的关键字为: ['变电', '二次', '省调', '配电'], \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')
         # content_2=MIMEText(head + "    以下是sunstation.csv信息筛选的关键字列表: ['变电','二次','防病毒','入侵','省调','配电'], \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')
         message.attach(content_1)
 
@@ -65,7 +66,7 @@ class DbProxy(object):
         self.reconnect_times=0
         self.cur=None
         try:
-            self.conn=pymysql.connect(host='192.168.81.4', port=3306, user='root', passwd='123456', db='bidding_info')
+            self.conn=pymysql.connect(host='localhost', port=3306, user='root', passwd='123456', db='bidding_info')
         except:
             logging.error('connet mysql error')
             logging.error(traceback.format_exc())
@@ -180,7 +181,7 @@ class DbProxy(object):
         except:
             logging.error(traceback.format_exc())
         try:
-            self.conn=pymysql.connect(host='192.168.81.4', port=3306, user='root', passwd='123456',
+            self.conn=pymysql.connect(host='localhost', port=3306, user='root', passwd='123456',
                                       db='bidding_info')
         except:
             logging.error('connet mysql error')

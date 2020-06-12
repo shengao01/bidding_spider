@@ -1,6 +1,8 @@
 # coding: utf-8
 import codecs
 import csv
+import traceback
+
 import time
 from common_func import DbProxy, SendMail
 
@@ -23,8 +25,6 @@ class WriteSend(object):
         # s_time = time.strftime(time_str, "%Y-%m-%d %H:%M:%S")
         # time_stamp = int(time.mktime(s_time))
         time_stamp=int(time.mktime(time.localtime())) - (24 * 60 * 60)
-        if time_stamp < 1585896622:
-            time_stamp=1585896622
         file_name="bidding_info.csv"
         return file_name, time_stamp
 
@@ -49,6 +49,7 @@ class WriteSend(object):
             writer=csv.writer(f)
             sql_str="select title, start, end, href from {} where src='{}' and tmp>{} order by tmp desc".format(
                 self.filename_table_map[filename], src_name, tm)
+            print(sql_str)
             res, rows=self.db.read_db(sql_str)
             for row in rows:
                 row_info=list(row)
@@ -66,12 +67,15 @@ class WriteSend(object):
     def run(self):
         filename, timestamp=self.init_filename()
         station_filename="substation.csv"
-        num1, num2=self.get_num(timestamp)
+        num1, num2 = self.get_num(timestamp)
         self.write_title(filename)
         self.write_title(station_filename)
         self.write_csv(filename, timestamp)
         self.write_csv(station_filename, timestamp)
-        self.send_email(filename, station_filename, num1, num2)
+        try:
+            self.send_email(filename, station_filename, num1, num2)
+        except:
+            traceback.print_exc()
 
 
 if __name__ == '__main__':
