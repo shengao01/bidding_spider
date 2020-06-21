@@ -14,7 +14,7 @@ from common_var import *
 
 
 class SendMail(object):
-    def __init__(self, filenname, filename1, num1, num2):
+    def __init__(self, filenname, filename1, num1, num2, filename3, filename4):
         self.mail_host="smtp.exmail.qq.com"  # 设置服务器
         self.mail_user= MAIL_USER  # 用户名
         self.mail_pass= MAIL_PASSWD  # 口令
@@ -26,6 +26,8 @@ class SendMail(object):
         self.smtpObj = smtplib.SMTP()
         self.filenname = filenname
         self.filenname1 = filename1
+        self.filenname3 = filename3
+        self.filenname4 = filename4
         self.num = num1
         self.num2 = num2
         self.total = num1 + num2
@@ -38,9 +40,10 @@ class SendMail(object):
         message['Subject']=Header(subject, 'utf-8')
         # 邮件正文内容
         head = "    此次新增内容{}条(其中一般招标信息{}条, 变电站相关{}条),详情请查阅附件。\n".format(self.total,self.num,self.num2)
-        content_1=MIMEText(head + "    bidding_info.csv信息筛选的关键字为: ['安全', '工控', '主机', '等保', '加固', '信息', "
-                                  "'监控', '防护', '攻防', '演练', '威胁', '入侵', '检测', '日志', '审计', '态势', '感知', '防火墙', '防病毒', '安防系统'],\n"
-                                  "    substation.csv信息筛选的关键字为: ['变电', '二次', '省调', '配电'], \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')
+        content_1=MIMEText(head + "    bidding_info.csv信息筛选的关键字为: {},\n"
+                                  "    substation.csv信息筛选的关键字为: {}。 \n    "
+                                  "此邮件为信息获取完成自动发送，如有遇到任何问题可随时与我联系。 \n    "
+                                  "(说明：浙江和内蒙两个省份信息为bidding_info和station_list.csv通过标题匹配对应省份下所有市区县名称的方式提取，可能存在数据为空的情况。）", 'plain', 'utf-8')
         # content_2=MIMEText(head + "    以下是sunstation.csv信息筛选的关键字列表: ['变电','二次','防病毒','入侵','省调','配电'], \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')
         message.attach(content_1)
 
@@ -54,6 +57,8 @@ class SendMail(object):
         self.init_message(self.message, self.num)
         self.add_attach(self.message, self.filenname)
         self.add_attach(self.message, self.filenname1)
+        self.add_attach(self.message, self.filenname3)
+        self.add_attach(self.message, self.filenname4)
         self.smtpObj.connect(self.mail_host, 25)  # 25为SMTP服务端口号
         self.smtpObj.login(self.mail_user, self.mail_pass)
         self.smtpObj.sendmail(self.sender, self.receivers, self.message.as_string())
@@ -61,12 +66,13 @@ class SendMail(object):
 
 
 class DbProxy(object):
-    def __init__(self):
+    def __init__(self, db="bidding_info"):
         self.connect_status=1
         self.reconnect_times=0
         self.cur=None
+        self.db_name = db
         try:
-            self.conn=pymysql.connect(host='localhost', port=3306, user='root', passwd='123456', db='bidding_info')
+            self.conn=pymysql.connect(host='localhost', port=3306, user='root', passwd='123456', db=self.db_name)
         except:
             logging.error('connet mysql error')
             logging.error(traceback.format_exc())
@@ -182,7 +188,7 @@ class DbProxy(object):
             logging.error(traceback.format_exc())
         try:
             self.conn=pymysql.connect(host='localhost', port=3306, user='root', passwd='123456',
-                                      db='bidding_info')
+                                      db=self.db_name)
         except:
             logging.error('connet mysql error')
             logging.error(traceback.format_exc())
