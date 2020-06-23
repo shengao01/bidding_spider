@@ -12,8 +12,11 @@ import traceback
 from lxml import etree
 from common_func import DbProxy
 
-key_words_list = ['安全', '工控', '主机', '等保', '加固', '信息', '监控', '防护', '攻防', '演练', '威胁', '入侵', '检测', '日志', '审计', '态势', '感知', '防火墙', '防病毒', '安防系统']
+key_words_list = ['测评', '安全', '工控', '主机', '等保', '加固', '信息', '监控', '防护', '攻防', '演练', '威胁', '入侵', '检测', '日志', '审计', '态势', '感知', '防火墙', '防病毒', '安防系统']
 key_words_list_1 = ['变电','二次', '配电','省调']
+
+waste_list = ['检测仪','流量计','安全阀','安全围栏','放大器','职业病','防雷','防化服','手套','道路','螺丝','除尘','风机','水质检测','安全鉴定','起重机械','食用','家具','空调','大气污染','设备维修','保养','交通安全','保养服务']
+
 
 class BaseSpider(object):
     """
@@ -98,7 +101,9 @@ class BaseSpider(object):
             return 1
 
     def write_file(self, cont_str, filename, num):
-        seg_list = jieba.cut(cont_str[0], cut_all=True)
+        seg_list = jieba.lcut(cont_str[0], cut_all=True)
+        if len(set(seg_list+waste_list)) < (len(seg_list) + len(waste_list)):
+            return
         for item in seg_list:
             if len(item) > 1 and item in key_words_list:
                 # f = codecs.open(filename, 'a', 'utf_8_sig')
