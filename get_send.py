@@ -24,7 +24,12 @@ class WriteSend(object):
         # time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         # s_time = time.strftime(time_str, "%Y-%m-%d %H:%M:%S")
         # time_stamp = int(time.mktime(s_time))
-        time_stamp=int(time.mktime(time.localtime())) - (24 * 60 * 60)
+        if time.localtime().tm_hour == 17:
+            time_stamp=int(time.mktime(time.localtime())) - (7 * 60 * 60)
+        elif time.localtime().tm_hour == 10:
+            time_stamp = int(time.mktime(time.localtime())) - (17 * 60 * 60)
+        else:
+            time_stamp = int(time.mktime(time.localtime())) - (24 * 60 * 60)
         file_name="bidding_info.csv"
         return file_name, time_stamp
 
