@@ -356,8 +356,8 @@ class HuaNengSpider(BaseSpider):
     def __init__(self):
         super(HuaNengSpider, self).__init__()
 
-        self.url_temp_list = ["http://ec.chng.com.cn/ecmall/more.do?type=107&start={}",
-                              "http://ec.chng.com.cn/ecmall/more.do?start={}"]
+        self.url_temp_list = ["http://ec.chng.com.cn/ecmall/more.do?type=103&start={}&limit={}",
+                              "http://ec.chng.com.cn/ecmall/more.do?start={}&limit={}"]
         self.url_part = "http://ec.chng.com.cn/ecmall/announcement/announcementDetail.do?announcementId={}"
         self.map_dict = {0: "询价公告", 1: "通知公告"}
         self.filename = "huaneng_list.csv"
@@ -400,18 +400,21 @@ class HuaNengSpider(BaseSpider):
                 self.write_file(write_list, self.filename, 4)
 
     def run(self):
-        total_list = self.get_total()
+        total_list = [10,10]
+        # total_list = self.get_total()
         i = 0
         while i < total_list[0]:
-            url = self.url_temp_list[0].format(i)
+            url = self.url_temp_list[0].format(i*50, 50)
+            # print(url)
             self.get_content(url, 0)
-            i += 10
+            i += 1
             time.sleep(0.1)
         j = 0
         while j < total_list[1]:
-            url = self.url_temp_list[1].format(j)
+            url = self.url_temp_list[1].format(j*50, 50)
+            # print(url)
             self.get_content(url, 1)
-            j += 10
+            j += 1
             time.sleep(0.1)
 
 
