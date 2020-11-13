@@ -11,9 +11,8 @@ import jieba
 import traceback
 from lxml import etree
 from common_func import DbProxy
+from common_var import key_words_list, key_words_list_1, key_words_list_2
 
-key_words_list = ['测评', '安全', '工控', '主机', '等保', '加固', '信息', '监控', '防护', '攻防', '演练', '威胁', '入侵', '检测', '日志', '审计', '态势', '感知', '防火墙', '防病毒', '安防系统']
-key_words_list_1 = ['变电','二次', '配电','省调']
 
 waste_list = ['检测仪','流量计','安全阀','安全围栏','放大器','职业病','防雷','防化服','手套','道路','螺丝','除尘','风机','水质检测','安全鉴定','起重机械','食用','家具','空调','大气污染','设备维修','保养','交通安全','保养服务']
 
@@ -93,6 +92,8 @@ class BaseSpider(object):
             sql_str = "insert into bidding_list(title, src, start, end, href, tmp) values(\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\")".format(title, cont_str[-1], start_date, end_date, href, time_now)
         elif bidding_type == 2:
             sql_str = "insert into station_list(title, src, start, end, href, tmp) values(\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\")".format(title, cont_str[-1], start_date, end_date, href, time_now)
+        elif bidding_type == 3:
+            sql_str = "insert into friend_list(title, src, start, end, href, tmp) values(\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\")".format(title, cont_str[-1], start_date, end_date, href, time_now)
         else:
             sql_str = "a empty sql_str"
         print(sql_str)
@@ -104,30 +105,27 @@ class BaseSpider(object):
         seg_list = jieba.lcut(cont_str[0], cut_all=True)
         if len(set(seg_list+waste_list)) < (len(seg_list) + len(waste_list)):
             return
+        flag=0
+        flag_1=0
+        flag_2=0
         for item in seg_list:
             if len(item) > 1 and item in key_words_list:
-                # f = codecs.open(filename, 'a', 'utf_8_sig')
-                # writer = csv.writer(f)
-                # print(cont_str)
-                # writer.writerow(cont_str)
-                # f.close()
-                cont_str.append(num)
-                res = self.write_db(cont_str, 1)
-                if res == 1:
-                    return True
-                break
-            if len(item) > 1 and item in key_words_list_1:
-                # f = codecs.open(filename, 'a', 'utf_8_sig')
-                # writer = csv.writer(f)
-                # print(cont_str)
-                # writer.writerow(cont_str)
-                # f.close()
-                cont_str.append(num)
-                res = self.write_db(cont_str, 2)
-                if res == 1:
-                    return True
-                break
+                if flag == 0:
+                    cont_str.append(num)
+                    res = self.write_db(cont_str, 1)
+                    flag = 1
 
+            if len(item) > 1 and item in key_words_list_1:
+                if flag_1 == 0:
+                    cont_str.append(num)
+                    res = self.write_db(cont_str, 2)
+                    flag_1 = 1
+        for item in key_words_list_2:
+            if item in cont_str[0]:
+                if flag_2 == 0:
+                    cont_str.append(num)
+                    res = self.write_db(cont_str, 3)
+                    flag_2 = 1
 
 
 class GuoDianSpider(BaseSpider):

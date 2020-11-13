@@ -38,9 +38,8 @@ class SendMail(object):
         message['Subject']=Header(subject, 'utf-8')
         # 邮件正文内容
         head = "    此次新增内容{}条(其中一般招标信息{}条, 变电站相关{}条),详情请查阅附件。\n".format(self.total,self.num,self.num2)
-        content_1=MIMEText(head + "    bidding_info.csv信息筛选的关键字为: ['测评', '安全', '工控', '主机', '等保', '加固', '信息', "
-                                  "'监控', '防护', '攻防', '演练', '威胁', '入侵', '检测', '日志', '审计', '态势', '感知', '防火墙', '防病毒', '安防系统'],\n"
-                                  "    substation.csv信息筛选的关键字为: ['变电', '二次', '省调', '配电'], \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')
+        content_1=MIMEText(head + "    bidding_info.csv信息筛选的关键字为: {},\n"
+                                  "    substation.csv信息筛选的关键字为: {}, \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n".format(str(key_words_list), str(key_words_list_1)), 'plain', 'utf-8')
         # content_2=MIMEText(head + "    以下是sunstation.csv信息筛选的关键字列表: ['变电','二次','防病毒','入侵','省调','配电'], \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')
         message.attach(content_1)
 
@@ -54,6 +53,47 @@ class SendMail(object):
         self.init_message(self.message, self.num)
         self.add_attach(self.message, self.filenname)
         self.add_attach(self.message, self.filenname1)
+        self.smtpObj.connect(self.mail_host, 25)  # 25为SMTP服务端口号
+        self.smtpObj.login(self.mail_user, self.mail_pass)
+        self.smtpObj.sendmail(self.sender, self.receivers, self.message.as_string())
+        print("邮件发送成功")
+
+
+class SendCePingMail(object):
+    def __init__(self, filenname, num1):
+        self.mail_host="smtp.exmail.qq.com"  # 设置服务器
+        self.mail_user= MAIL_USER  # 用户名
+        self.mail_pass= MAIL_PASSWD  # 口令
+        self.sender= MAIL_USER
+        # self.receivers=["zhangshg@tdhxkj.com"]
+        self.receivers= CEPING_RECEIVERS
+        self.message = MIMEMultipart()
+#        self.smtpObj = smtplib.SMTP_SSL(self.mail_host, 463)
+        self.smtpObj = smtplib.SMTP()
+        self.filenname = filenname
+        self.total = num1
+
+    def init_message(self, message, num):
+        message['From']=Header("张身高 <{}>".format(MAIL_USER), 'utf-8')
+        message['To']=Header('友商合作事业部<zhaobiao>', 'utf-8')
+        time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        subject='友商合作事业部招标信息 ' + time_now + ' 获取更新(接前次数据)'
+        message['Subject']=Header(subject, 'utf-8')
+        # 邮件正文内容
+        head = "    此次新增内容{}条,详情请查阅附件。\n".format(num)
+        content_1=MIMEText(head + "    friend_bidding_info.csv信息筛选的关键字为: {},\n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n".format(str(key_words_list_2)), 'plain', 'utf-8')
+        # content_2=MIMEText(head + "    以下是sunstation.csv信息筛选的关键字列表: ['变电','二次','防病毒','入侵','省调','配电'], \n    如有需要可新增。\n    (此邮件为信息获取完成自动发送，如有任何建议可直接回复邮件，也可直接联系我。) \n", 'plain', 'utf-8')
+        message.attach(content_1)
+
+    def add_attach(self, message, file_name):
+        att1=MIMEText(open('./' + file_name, 'rb').read(), 'base64', 'utf-8')
+        att1["Content-Type"]='application/octet-stream'
+        att1["Content-Disposition"]='attachment; filename="' + file_name + '"'
+        message.attach(att1)
+
+    def run(self):
+        self.init_message(self.message, self.total)
+        self.add_attach(self.message, self.filenname)
         self.smtpObj.connect(self.mail_host, 25)  # 25为SMTP服务端口号
         self.smtpObj.login(self.mail_user, self.mail_pass)
         self.smtpObj.sendmail(self.sender, self.receivers, self.message.as_string())
