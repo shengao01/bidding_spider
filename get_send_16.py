@@ -4,7 +4,7 @@ import csv
 import traceback
 
 import time
-from common_func import DbProxy, SendCePingMail
+from common_func_16 import DbProxy, SendMail
 from common_var import SRC_MAP, SRC_LIST
 
 
@@ -12,6 +12,7 @@ class WriteSend(object):
     """
     write file from mysql to csv
     """
+
     def __init__(self):
         self.db=DbProxy()
         self.map_dict=SRC_MAP
@@ -21,26 +22,28 @@ class WriteSend(object):
         #               "11": "内蒙古电力集团http://impc.e-bidding.org/"}
         #self.src_list=["1", "2", "3", "4", "5", "7", "8", "9", "10","11"]
         self.src_list=SRC_LIST
-        self.filename_table_map={"friend_bidding_info.csv": "friend_list"}
+        self.filename_table_map={"bidding_info.csv": "bidding_list", "substation.csv": "station_list"}
 
     def init_filename(self):
         # time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
         # s_time = time.strftime(time_str, "%Y-%m-%d %H:%M:%S")
         # time_stamp = int(time.mktime(s_time))
-        if time.localtime().tm_hour == 17:
-            time_stamp=int(time.mktime(time.localtime())) - (7 * 60 * 60)
+        if time.localtime().tm_hour == 16:
+            time_stamp=int(time.mktime(time.localtime())) - (6 * 60 * 60)
         elif time.localtime().tm_hour == 10:
-            time_stamp = int(time.mktime(time.localtime())) - (17 * 60 * 60)
+            time_stamp = int(time.mktime(time.localtime())) - (18 * 60 * 60)
         else:
             time_stamp = int(time.mktime(time.localtime())) - (24 * 60 * 60)
-        file_name="friend_bidding_info.csv"
+        file_name="bidding_info.csv"
         return file_name, time_stamp
 
     def get_num(self, tm):
-        sql_str="select count(*) from friend_list where tmp>{} and bId>116".format(tm)
+        sql_str="select count(*) from bidding_list where tmp>{}".format(tm)
+        sql_str1="select count(*) from station_list where tmp>{}".format(tm)
         res, rows=self.db.read_db(sql_str)
+        res, rows1=self.db.read_db(sql_str1)
         # total = rows[0][0] + rows1[0][0]
-        return rows[0][0]
+        return rows[0][0], rows1[0][0]
 
     def write_title(self, filename):
         f=codecs.open(filename, 'w', 'utf_8_sig')
@@ -65,18 +68,21 @@ class WriteSend(object):
             f.close()
             print(rows)
 
-    def send_email(self, filename, num1):
-        if num1:
-            email=SendCePingMail(filename, num1)
+    def send_email(self, filename, filename1, num1, num2):
+        if num1 or num2:
+            email=SendMail(filename, filename1, num1, num2)
             email.run()
 
     def run(self):
         filename, timestamp=self.init_filename()
-        num1 = self.get_num(timestamp)
+        station_filename="substation.csv"
+        num1, num2 = self.get_num(timestamp)
         self.write_title(filename)
+        self.write_title(station_filename)
         self.write_csv(filename, timestamp)
+        self.write_csv(station_filename, timestamp)
         try:
-            self.send_email(filename, num1)
+            self.send_email(filename, station_filename, num1, num2)
         except:
             traceback.print_exc()
 

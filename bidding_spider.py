@@ -14,7 +14,7 @@ from common_func import DbProxy
 from common_var import key_words_list, key_words_list_1, key_words_list_2
 
 
-waste_list = ['检测仪','流量计','安全阀','安全围栏','放大器','职业病','防雷','防化服','手套','道路','螺丝','除尘','风机','水质检测','安全鉴定','起重机械','食用','家具','空调','大气污染','设备维修','保养','交通安全','保养服务']
+waste_list = ['检测仪','流量计','安全阀','安全围栏','电脑','维保','文化墙','安防监控','建筑','放大器','职业病','防雷','防化服','手套','道路','螺丝','除尘','风机','水质检测','安全鉴定','起重机械','食用','家具','空调','大气污染','设备维修','保养','交通安全','保养服务']
 
 
 class BaseSpider(object):
@@ -87,6 +87,11 @@ class BaseSpider(object):
             start_date=cont_str[1]
             end_date=""
             href=cont_str[2]
+        else:
+            title = cont_str[0]
+            start_date = cont_str[1]
+            end_date = ""
+            href = cont_str[2]
         time_now = int(time.time())
         if bidding_type == 1:
             sql_str = "insert into bidding_list(title, src, start, end, href, tmp) values(\"{}\",\"{}\",\"{}\",\"{}\",\"{}\",\"{}\")".format(title, cont_str[-1], start_date, end_date, href, time_now)
@@ -102,27 +107,47 @@ class BaseSpider(object):
             return 1
 
     def write_file(self, cont_str, filename, num):
-        seg_list = jieba.lcut(cont_str[0], cut_all=True)
+        seg_list = list(set(jieba.lcut(cont_str[0], cut_all=True)))
         if len(set(seg_list+waste_list)) < (len(seg_list) + len(waste_list)):
             return
         flag=0
         flag_1=0
         flag_2=0
-        for item in seg_list:
-            if len(item) > 1 and item in key_words_list:
+        # for item in seg_list:
+        #     if len(item) > 1 and item in key_words_list:
+        #         if flag == 0:
+        #             print("enter write bidding_list")
+        #             cont_str.append(num)
+        #             res = self.write_db(cont_str, 1)
+        #             flag = 1
+        #
+        #     if len(item) > 1 and item in key_words_list_1:
+        #         if flag_1 == 0:
+        #             print("enter write station_list")
+        #             cont_str.append(num)
+        #             res = self.write_db(cont_str, 2)
+        #             flag_1 = 1
+
+        for item in key_words_list:
+            if item in cont_str[0]:
                 if flag == 0:
+                    print("enter write bidding_list")
                     cont_str.append(num)
                     res = self.write_db(cont_str, 1)
                     flag = 1
 
-            if len(item) > 1 and item in key_words_list_1:
+        for item in key_words_list_1:
+            if item in cont_str[0]:
                 if flag_1 == 0:
+                    print("enter write station_list")
                     cont_str.append(num)
                     res = self.write_db(cont_str, 2)
                     flag_1 = 1
+
         for item in key_words_list_2:
             if item in cont_str[0]:
                 if flag_2 == 0:
+                    print("enter write friend_list")
                     cont_str.append(num)
                     res = self.write_db(cont_str, 3)
                     flag_2 = 1
@@ -141,10 +166,10 @@ class GuoDianSpider(BaseSpider):
         self.url_temp = "https://cgdcbidding.dlzb.com/page-{}.shtml"
         self.filename = 'guodian_list.csv'
         self.map_dict = {0: "货物", 1: "工程", 2: "服务"}
-        f = codecs.open(self.filename, 'w', 'utf_8_sig')
-        writer = csv.writer(f)
-        writer.writerow(['标题', '来源', '开始时间', '结束时间', '链接'])
-        f.close()
+        # f = codecs.open(self.filename, 'w', 'utf_8_sig')
+        # writer = csv.writer(f)
+        # writer.writerow(['标题', '来源', '开始时间', '结束时间', '链接'])
+        # f.close()
 
     def get_total(self):
         total_list = []
@@ -214,10 +239,10 @@ class GuoNengSpider(BaseSpider):
         super(GuoNengSpider, self).__init__()
         self.url_temp = "https://www.neep.shop/rest/service/routing/nouser/inquiry/quote/searchCmsArticleList?callback=1&quotDeadline=2019-04-19+15%3A13%3A25&noticeType=1&pageNo={}"
         self.filename = "guoneng_list.csv"
-        f = codecs.open(self.filename, 'w', 'utf_8_sig')
-        writer = csv.writer(f)
-        writer.writerow(['询价单名称', '询价单编号', '发布区域', '开始时间', '结束时间', '链接'])
-        f.close()
+        # f = codecs.open(self.filename, 'w', 'utf_8_sig')
+        # writer = csv.writer(f)
+        # writer.writerow(['询价单名称', '询价单编号', '发布区域', '开始时间', '结束时间', '链接'])
+        # f.close()
 
     def get_content_list(self, detail_url):
         if detail_url is not None:
@@ -274,10 +299,10 @@ class HuaDianSpider(BaseSpider):
         self.url_part = "https://www.chdtp.com.cn/staticPage/"
         self.map_dict = {0: "采购信息", 1: "招标信息"}
         self.filename = "huadian_list.csv"
-        f = codecs.open(self.filename, 'w', 'utf_8_sig')
-        writer = csv.writer(f)
-        writer.writerow(['名称', '来源', '状态', '单位', '开始时间', '链接'])
-        f.close()
+        # f = codecs.open(self.filename, 'w', 'utf_8_sig')
+        # writer = csv.writer(f)
+        # writer.writerow(['名称', '来源', '状态', '单位', '开始时间', '链接'])
+        # f.close()
 
     def get_content_list(self, detail_url, num):  
         detail_html_str = self.parse_url(detail_url)
@@ -285,12 +310,12 @@ class HuaDianSpider(BaseSpider):
             detail_html_str = " "
         # print(detail_html_str)
         detail_html = etree.HTML(detail_html_str)
-        cont_list = detail_html.xpath("//table//tr")[1:-1]
+        cont_list = detail_html.xpath("//div//form//table[1]//tr")
         print(len(cont_list))
         for cont in cont_list:
             item = {}
             item["src"] = self.map_dict[num]
-            item["title"] = cont.xpath("./td[2]//text()")[0]
+            item["title"] = "".join(cont.xpath("./td[2]//text()")).strip()
             item["company"] = cont.xpath("./td[3]/text()")[0]  if cont.xpath("./td[3]/text()") else None
             # state = cont.xpath("./td[1]/span/text()")[0] if cont.xpath("./td[1]/span/text()") else None
             # item["state"] = state.strip().strip("\r\n\t")
@@ -329,15 +354,16 @@ class HuaDianSpider(BaseSpider):
         return total_list
 
     def run(self):
-        total = self.get_total()
+        total = 20
+        # total = self.get_total()
         # total[0] = 1
-        for i in range(total[0]):
+        for i in range(total):
             url = self.url_temp[0].format(i+1)
             res = self.get_content_list(url, 0)
             if res:
                 break
             time.sleep(0.1)
-        for i in range(total[1]):
+        for i in range(total):
             url = self.url_temp[1].format(i + 1)
             res = self.get_content_list(url, 1)
             if res:
@@ -355,14 +381,14 @@ class HuaNengSpider(BaseSpider):
         super(HuaNengSpider, self).__init__()
 
         self.url_temp_list = ["http://ec.chng.com.cn/ecmall/more.do?type=103&start={}&limit={}",
-                              "http://ec.chng.com.cn/ecmall/more.do?start={}&limit={}"]
+                              "http://ec.chng.com.cn/ecmall/more.do?type=107&start={}&limit={}"]
         self.url_part = "http://ec.chng.com.cn/ecmall/announcement/announcementDetail.do?announcementId={}"
         self.map_dict = {0: "询价公告", 1: "通知公告"}
         self.filename = "huaneng_list.csv"
-        f = codecs.open(self.filename, 'w', 'utf_8_sig')
-        writer = csv.writer(f)
-        writer.writerow(['名称', '来源', '开始时间', '链接'])
-        f.close()
+        # f = codecs.open(self.filename, 'w', 'utf_8_sig')
+        # writer = csv.writer(f)
+        # writer.writerow(['名称', '来源', '开始时间', '链接'])
+        # f.close()
 
     def get_total(self):
         total_list = []
@@ -429,10 +455,10 @@ class ShenHuaSpider(BaseSpider):
         self.map_dict = {0: "货物", 1: "工程", 2: "服务"}
         self.url_part = "http://www.shenhuabidding.com.cn"
         self.filename = "shenhua_list.csv"
-        f = codecs.open(self.filename, 'w', 'utf_8_sig')
-        writer = csv.writer(f)
-        writer.writerow(['名称', '编号', '来源', '开始时间', '链接'])
-        f.close()
+        # f = codecs.open(self.filename, 'w', 'utf_8_sig')
+        # writer = csv.writer(f)
+        # writer.writerow(['名称', '编号', '来源', '开始时间', '链接'])
+        # f.close()
 
     def get_total(self):
         total_list = []
@@ -506,10 +532,10 @@ class ZhaoCaiSpider(BaseSpider):
             }
         self.map_dict = {0: "工程", 1: "货物", 2: "服务", 3: "电力", 4: "石油"}
         self.filename = "zhaocai_list.csv"
-        f = codecs.open(self.filename, 'w', 'utf_8_sig')
-        writer = csv.writer(f)
-        writer.writerow(['名称', '来源', '地区', '开始时间', '链接'])
-        f.close()
+        # f = codecs.open(self.filename, 'w', 'utf_8_sig')
+        # writer = csv.writer(f)
+        # writer.writerow(['名称', '来源', '地区', '开始时间', '链接'])
+        # f.close()
 
     def get_total(self, session):
         total_list = []
@@ -640,64 +666,200 @@ class CaizhaoSpider(BaseSpider):
             time.sleep(2)
 
 
+class DianSheSpider(BaseSpider):
+    """http://www.cpeinet.com.cn/cpcec/bul/bul_list.jsp?type=1中国电力设备网招标信息获取"""
+    def __init__(self):
+        super(DianSheSpider, self).__init__()
+        self.url_temp = "http://www.cpeinet.com.cn/cpcec/bul/bul_list.jsp?PageIndex={}&type=1"
+        self.url_part = "http://www.chinabidding.cn"
+
+    def get_content(self, detail_url):
+        if detail_url is not None:
+            detail_html_str = self.parse_url(detail_url)
+            print(detail_html_str)
+            detail_html=etree.HTML(detail_html_str)
+            cont_list = detail_html.xpath('//div[@class="article_list_lb"]//ul/li')
+            for cont in cont_list:
+                item = {}
+                item["title"]=cont.xpath(".//a/@title")[0].strip()
+                # item["state"] = cont.xpath("./td[1]/span/text()")[0]
+                item["date"]=cont.xpath(".//i/text()")[1].strip()
+                # print(item["date"])
+                href_str=cont.xpath(".//a/@onclick")[0]
+                item["href"] = href_str
+                print(item)
+                write_list=[item["title"], item["date"], item["href"]]
+                # self.write_file(write_list, self.filename, 8)
+
+    def run(self):
+        for i in range(4):
+            print("enter page===={}".format(i+1))
+            url = self.url_temp.format(i+1)
+            res = self.get_content(url)
+            if res:
+                break
+            time.sleep(2)
+
+
+class DaTangSpider(BaseSpider):
+    """
+    http://tang.cdt-ec.com/home/more.html
+    大唐集团招标信息获取"""
+    def __init__(self):
+        super(DaTangSpider, self).__init__()
+        self.url_temp = "http://tang.cdt-ec.com/potal-web/pendingGxnotice/where?message_type=0&pageno={}&pagesize=30"
+        self.url_part = "http://www.chinabidding.cn"
+        self.filename = "datang.csv"
+
+    def get_content(self, detail_url):
+        if detail_url is not None:
+            detail_html_str = self.parse_url(detail_url)
+            print(detail_html_str)
+            cont_list = json.loads(detail_html_str)
+            for cont in cont_list:
+                item = {}
+                item["title"]=cont["message_title"]
+                if cont["publish_time"]:
+                    item["date"]=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(int(str(cont["publish_time"])[:-3])))
+                else:
+                    item["date"]=""
+                item["href"] = cont["pdf_url"]
+                print(item)
+                write_list=[item["title"], item["date"], item["href"]]
+                self.write_file(write_list, self.filename, 10)
+
+    def run(self):
+        for i in range(4):
+            print("enter page===={}".format(i+1))
+            url = self.url_temp.format(i+1)
+            res = self.get_content(url)
+            if res:
+                break
+            time.sleep(2)
+
+
+class NeiMengSpider(BaseSpider):
+    """
+    http://tang.cdt-ec.com/home/more.html
+    大唐集团招标信息获取"""
+    def __init__(self):
+        super(NeiMengSpider, self).__init__()
+        self.url_temp = "http://impc.e-bidding.org/nmcms/category/bulletinList.html?categoryId=88&tabName=%E6%8B%9B%E6%A0%87%E5%85%AC%E5%91%8A&page={}"
+        self.url_part = "http://www.chinabidding.cn"
+        self.filename = "neimeng.csv"
+
+    def get_content(self, detail_url):
+        if detail_url is not None:
+            detail_html_str = self.parse_url(detail_url)
+            print(detail_html_str)
+            detail_html=etree.HTML(detail_html_str)
+            cont_list = detail_html.xpath('//div/ul[@class="newslist"]/li')
+            for cont in cont_list:
+                item = {}
+                item["title"]=cont.xpath(".//a/@title")[0].strip()
+                date="".join(cont.xpath(".//a/div/text()")).strip()
+                month, day = date.split("/")
+                item["date"]="2020-{}-{}".format(month, day)
+
+                # print(item["date"])
+                href_str=cont.xpath(".//a/@href")[0]
+                item["href"] = href_str
+                print(item)
+                write_list=[item["title"], item["date"], item["href"]]
+                self.write_file(write_list, self.filename, 11)
+
+    def run(self):
+        for i in range(6):
+            print("enter page===={}".format(i+1))
+            url = self.url_temp.format(i+1)
+            res = self.get_content(url)
+            if res:
+                break
+            time.sleep(2)
+
+
 if __name__ == '__main__':
     path = "./log.log"
-    try:
-        guodian=GuoDianSpider()
-        guodian.run()
-        os.system("echo \"guodian is running finished.\" >> %s" %  path)
-    except:
-        print("guodian run error...")
-        print(traceback.format_exc())
-
-    try:
-        guoneng=GuoNengSpider()
-        guoneng.run()
-    except:
-        print("guoneng run error...")
-        print(traceback.format_exc())
-
-    try:
-        huadian=HuaDianSpider()
-        huadian.run()
-    except:
-        print("huadian run error...")
-        print(traceback.format_exc())
-
-    try:
-        huaneng=HuaNengSpider()
-        huaneng.run()
-    except:
-        print("huaneng run error...")
-        print(traceback.format_exc())
-
-    try:
-        shenhua=ShenHuaSpider()
-        shenhua.run()
-    except:
-        print("shenhua run error...")
-        print(traceback.format_exc())
-
-    try:
-        nandian=NanDianSpider()
-        nandian.run()
-    except:
-        print("nandian run error...")
-        print(traceback.format_exc())
-
-    try:
-        caizhao = CaizhaoSpider()
-        caizhao.run()
-    except:
-        print("caizhao run error...")
-        print(traceback.format_exc())
-
-    # try:
-    #     zhaocai=ZhaoCaiSpider()
-    #     zhaocai.run()
-    # except:
-    #     print("zhaocai run error...")
-    #     print(traceback.format_exc())
+    # 1-国电,2-国能,3-华电,4-华能,5-神华,6-南电,7-采购招标网,8-招标采购网,9-电力设备网,10-大唐,11-内蒙
+    run_list = [1,2,3,4,10,11]
+    # run_list = [3]
+    if 1 in run_list:
+        try:
+            guodian=GuoDianSpider()
+            guodian.run()
+        except:
+            print("guodian run error...")
+            print(traceback.format_exc())
+    if 2 in run_list:
+        try:
+            guoneng=GuoNengSpider()
+            guoneng.run()
+        except:
+            print("guoneng run error...")
+            print(traceback.format_exc())
+    if 3 in run_list:
+        try:
+            huadian=HuaDianSpider()
+            huadian.run()
+        except:
+            print("huadian run error...")
+            print(traceback.format_exc())
+    if 4 in run_list:
+        try:
+            huaneng=HuaNengSpider()
+            huaneng.run()
+        except:
+            print("huaneng run error...")
+            print(traceback.format_exc())
+    if 5 in run_list:
+        try:
+            shenhua=ShenHuaSpider()
+            shenhua.run()
+        except:
+            print("shenhua run error...")
+            print(traceback.format_exc())
+    if 6 in run_list:
+        try:
+            nandian=NanDianSpider()
+            nandian.run()
+        except:
+            print("nandian run error...")
+            print(traceback.format_exc())
+    if 7 in run_list:
+        try:
+            caizhao = CaizhaoSpider()
+            caizhao.run()
+        except:
+            print("caizhao run error...")
+            print(traceback.format_exc())
+    if 8 in run_list:
+        try:
+            zhaocai=ZhaoCaiSpider()
+            zhaocai.run()
+        except:
+            print("zhaocai run error...")
+            print(traceback.format_exc())
+    if 9 in run_list:
+        try:
+            dianshe = DianSheSpider()
+            dianshe.run()
+        except:
+            print("DianSheSpider run error...")
+            print(traceback.format_exc())
+    if 10 in run_list:
+        try:
+            datang = DaTangSpider()
+            datang.run()
+        except:
+            print("DaTangSpider run error...")
+            print(traceback.format_exc())
+    if 11 in run_list:
+        try:
+            neimeng = NeiMengSpider()
+            neimeng.run()
+        except:
+            print("NeiMengSpider run error...")
+            print(traceback.format_exc())
 
     time_now=time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     os.system("echo \"%s is running finished.\" >> %s" %(str(time_now), path))

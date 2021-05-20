@@ -5,6 +5,7 @@ import traceback
 
 import time
 from common_func import DbProxy, SendMail
+from common_var import SRC_MAP, SRC_LIST
 
 
 class WriteSend(object):
@@ -14,10 +15,13 @@ class WriteSend(object):
 
     def __init__(self):
         self.db=DbProxy()
-        self.map_dict={"1": "国电招投标网https://cgdcbidding.dlzb.com/", "2": "国能e购www.neep.shop", "3": "华电集团www.chdtp.com.cn",
-                       "4": "华能集团http://ec.chng.com.cn", "5": "神华招标网www.shenhuabidding.com.cn",
-                       "6": "招标采购网www.zbytb.com", "7": "南方电网www.bidding.csg.cn", "8": "采购与招标网www.chinabidding.cn"}
-        self.src_list=["1", "2", "3", "4", "5", "7", "8"]
+        self.map_dict=SRC_MAP
+        #self.map_dict={"1": "国电招投标网https://cgdcbidding.dlzb.com/", "2": "国能e购www.neep.shop", "3": "华电集团www.chdtp.com.cn",
+        #              "4": "华能集团http://ec.chng.com.cn", "5": "神华招标网www.shenhuabidding.com.cn",
+        #              "6": "招标采购网www.zbytb.com", "7": "南方电网www.bidding.csg.cn", "8": "采购与招标网www.chinabidding.cn","9": "中国电力设备信息网http://www.cpeinet.com.cn/", "10": "大唐集团http://tang.cdt-ec.com/home/index.html",
+        #               "11": "内蒙古电力集团http://impc.e-bidding.org/"}
+        #self.src_list=["1", "2", "3", "4", "5", "7", "8", "9", "10","11"]
+        self.src_list=SRC_LIST
         self.filename_table_map={"bidding_info.csv": "bidding_list", "substation.csv": "station_list"}
 
     def init_filename(self):
